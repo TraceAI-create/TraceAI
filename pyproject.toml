@@ -1,17 +1,12 @@
 [project]
 name = "traceai"
 version = "0.1.0"
-description = "Add your description here"
+description = "AI-powered decision traceability and audit system"
 readme = "README.md"
-authors = [
-    { name = "Shreyas19205", email = "shreyas0962@gmail.com" }
-]
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "fastapi[standard]>=0.116.0",
+]
 
-[project.scripts]
-traceai = "traceai:main"
-
-[build-system]
-requires = ["uv_build>=0.12.16,<0.13.0"]
-build-backend = "uv_build"
+[tool.uv]
+package = false
