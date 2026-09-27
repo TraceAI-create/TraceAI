@@ -20,6 +20,31 @@ class EventResponse(BaseModel):
     event_hash: str
 
 
+class EvidenceLinkResponse(BaseModel):
+    id: uuid.UUID
+    evidence_id: uuid.UUID
+    role: str
+    created_at: datetime
+
+
+class ReviewActionResponse(BaseModel):
+    id: uuid.UUID
+    reviewer_id: str
+    action: str
+    comments: str | None
+    created_at: datetime
+
+
+class DecisionSummaryResponse(BaseModel):
+    id: uuid.UUID
+    agent_id: str
+    agent_version: str
+    status: str
+    created_at: datetime
+    root_hash: str | None
+    event_count: int = 0
+
+
 class DecisionResponse(BaseModel):
     id: uuid.UUID
     agent_id: str
@@ -28,7 +53,10 @@ class DecisionResponse(BaseModel):
     input_data: dict
     created_at: datetime
     root_hash: str | None
-    events: list[EventResponse]
+    events: list[EventResponse] = []
+    evidence_links: list[EvidenceLinkResponse] = []
+    review_actions: list[ReviewActionResponse] = []
+
 
 class IntegrityResponse(BaseModel):
     valid: bool

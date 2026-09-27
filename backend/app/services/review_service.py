@@ -1,0 +1,54 @@
+import uuid
+from sqlalchemy.orm import Session
+
+from app.db.models import Decision, ReviewAction
+from app.schemas.review import ReviewCreate
+from app.services.event_recorder import EventRecorder
+
+
+def create_review(
+    db: Session,
+    decision_id: uuid.UUID,
+    data: ReviewCreate,
+) -> ReviewAction | None:
+    decision = db.get(Decision, decision_id)
+    if not decision:
+        return None
+
+    review = ReviewAction(
+        decision_id=decision_id,
+        reviewer_id=data.reviewer_id,
+        action=data.action,
+        comments=data.comments,
+    )
+    db.add(review)
+
+    # Record the human review in the decision's immutable audit chain
+    recorder = EventRecorder(db)
+    recorder.record(
+        decision,
+        event_type=f"HUMAN_REVIEW_{data.action.upper()}",
+        payload={
+            "reviewer_id": data.reviewer_id,
+            "action": data.action,
+            "comments": data.comments,
+        },
+    )
+
+    decision.status = f"reviewed_{data.action}"
+
+    db.commit()
+    db.refresh(review)
+    return review
+
+
+def list_reviews_for_decision(
+    db: Session,
+    decision_id: uuid.UUID,
+) -> list[ReviewAction]:
+    return (
+        db.query(ReviewAction)
+        .filter(ReviewAction.decision_id == decision_id)
+        .order_by(ReviewAction.created_at.desc())
+        .all()
+    )

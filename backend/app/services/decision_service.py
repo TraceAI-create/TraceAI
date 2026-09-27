@@ -1,21 +1,18 @@
 import uuid
-
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.db.models import AuditEvent, Decision
-from app.schemas.decision import DecisionCreate
-from app.services.event_recorder import EventRecorder
 from app.core.hashing import hash_event
+from app.db.models import AuditEvent, Decision, DecisionEvidence, Evidence
+from app.schemas.decision import DecisionCreate, DecisionSummaryResponse
+from app.services.event_recorder import EventRecorder
 
 
 def create_decision(
     db: Session,
     data: DecisionCreate,
 ) -> Decision:
-    """
-    Create a decision and its initial audit event.
-    """
-
+    """Create a decision and its initial audit event."""
     decision = Decision(
         agent_id=data.agent_id,
         agent_version=data.agent_version,
@@ -27,19 +24,18 @@ def create_decision(
     db.flush()
 
     recorder = EventRecorder(db)
-
     recorder.record(
         decision,
         event_type="DECISION_CREATED",
         payload={
             "agent_id": data.agent_id,
             "agent_version": data.agent_version,
+            "input_data": data.input_data,
         },
     )
 
     db.commit()
     db.refresh(decision)
-
     return decision
 
 
@@ -48,8 +44,92 @@ def get_decision(
     decision_id: uuid.UUID,
 ) -> Decision | None:
     """Retrieve a decision by ID."""
-
     return db.get(Decision, decision_id)
+
+
+def list_decisions(
+    db: Session,
+    skip: int = 0,
+    limit: int = 50,
+    agent_id: str | None = None,
+    status: str | None = None,
+) -> list[DecisionSummaryResponse]:
+    """List decisions with basic filters and event counts."""
+    query = (
+        db.query(
+            Decision,
+            func.count(AuditEvent.id).label("event_count")
+        )
+        .outerjoin(AuditEvent, Decision.id == AuditEvent.decision_id)
+        .group_by(Decision.id)
+        .order_by(Decision.created_at.desc())
+    )
+
+    if agent_id:
+        query = query.filter(Decision.agent_id == agent_id)
+    if status:
+        query = query.filter(Decision.status == status)
+
+    results = query.offset(skip).limit(limit).all()
+    summaries = []
+    for decision, count in results:
+        summaries.append(
+            DecisionSummaryResponse(
+                id=decision.id,
+                agent_id=decision.agent_id,
+                agent_version=decision.agent_version,
+                status=decision.status,
+                created_at=decision.created_at,
+                root_hash=decision.root_hash,
+                event_count=count,
+            )
+        )
+    return summaries
+
+
+def update_decision_status(
+    db: Session,
+    decision_id: uuid.UUID,
+    status: str,
+) -> Decision | None:
+    """Update decision execution status (e.g. running, completed, failed, reviewed)."""
+    decision = db.get(Decision, decision_id)
+    if not decision:
+        return None
+
+    decision.status = status
+    recorder = EventRecorder(db)
+    recorder.record(
+        decision,
+        event_type=f"STATUS_UPDATED_{status.upper()}",
+        payload={"new_status": status},
+    )
+    db.commit()
+    db.refresh(decision)
+    return decision
+
+
+def link_evidence(
+    db: Session,
+    decision_id: uuid.UUID,
+    evidence_id: uuid.UUID,
+    role: str = "context",
+) -> DecisionEvidence | None:
+    """Link an existing evidence artifact to a decision."""
+    decision = db.get(Decision, decision_id)
+    evidence = db.get(Evidence, evidence_id)
+    if not decision or not evidence:
+        return None
+
+    link = DecisionEvidence(
+        decision_id=decision_id,
+        evidence_id=evidence_id,
+        role=role,
+    )
+    db.add(link)
+    db.commit()
+    db.refresh(link)
+    return link
 
 
 def verify_decision_integrity(
@@ -64,11 +144,7 @@ def verify_decision_integrity(
     2. Every event points to the previous event's hash.
     3. The decision root hash matches the latest event.
     """
-
-    decision = db.get(
-        Decision,
-        decision_id,
-    )
+    decision = db.get(Decision, decision_id)
 
     if decision is None:
         return {
@@ -78,12 +154,8 @@ def verify_decision_integrity(
 
     events = (
         db.query(AuditEvent)
-        .filter(
-            AuditEvent.decision_id == decision_id
-        )
-        .order_by(
-            AuditEvent.sequence_number.asc()
-        )
+        .filter(AuditEvent.decision_id == decision_id)
+        .order_by(AuditEvent.sequence_number.asc())
         .all()
     )
 
