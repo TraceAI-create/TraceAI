@@ -14,3 +14,6 @@ __pycache__/
 *.log
 data/
 .DS_Store
+
+# Temporary scratch and test runner scripts
+test_phase*.py
