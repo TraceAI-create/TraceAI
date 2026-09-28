@@ -30,6 +30,7 @@ class DecisionContext:
         flush_mode: Literal["immediate", "batch"] = "immediate",
         verify_on_exit: bool = True,
         transport: httpx.BaseTransport | None = None,
+        http_client: httpx.Client | None = None,
     ):
         self.agent_id = agent_id
         self.agent_version = agent_version
@@ -43,6 +44,7 @@ class DecisionContext:
             endpoint=self.endpoint,
             api_key=self.api_key,
             transport=transport,
+            http_client=http_client,
         )
         self.session: DecisionSession | None = None
         self.current_sequence: int = 0
@@ -63,6 +65,8 @@ class DecisionContext:
         )
         self.current_sequence = 1
         self.last_hash = self.session.root_hash
+        from traceai_sdk.interceptors.tool import set_active_context
+        set_active_context(self)
         return self
 
     def record_event(
@@ -138,6 +142,23 @@ class DecisionContext:
 
         return ref
 
+    def evaluate_policies(
+        self,
+        target_payload: dict[str, Any] | None = None,
+        policy_id: UUID | str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Evaluate current decision context against active policies or a specific policy.
+        Results and any violations are recorded into the cryptographic audit chain.
+        """
+        if self.session is None:
+            raise RuntimeError("DecisionContext is not active.")
+        return self._client.evaluate_policies(
+            decision_id=self.session.id,
+            target_payload=target_payload,
+            policy_id=policy_id,
+        )
+
     def flush(self) -> list[AuditEventRecord]:
         """Flush any buffered events to the backend."""
         if not self._buffer or self.session is None:
@@ -179,4 +200,6 @@ class DecisionContext:
                         f"Audit chain verification failed for decision {self.session.id}: {result.reason}"
                     )
         finally:
+            from traceai_sdk.interceptors.tool import clear_active_context
+            clear_active_context(self)
             self._client.close()

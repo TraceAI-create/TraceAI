@@ -6,13 +6,12 @@ from traceai_sdk.context import DecisionContext
 
 
 @pytest.fixture
-def test_transport():
-    tc = TestClient(app)
-    return tc._transport
+def test_client():
+    return TestClient(app)
 
 
-def test_client_direct_lifecycle(test_transport):
-    client = TraceAIClient(endpoint="http://testserver", transport=test_transport)
+def test_client_direct_lifecycle(test_client):
+    client = TraceAIClient(http_client=test_client)
 
     # 1. Create decision
     session = client.create_decision(
@@ -50,14 +49,13 @@ def test_client_direct_lifecycle(test_transport):
     client.close()
 
 
-def test_context_manager_immediate_mode(test_transport):
+def test_context_manager_immediate_mode(test_client):
     with DecisionContext(
         agent_id="claim_agent",
         agent_version="1.0.0",
         input_data={"claim_amount": 500},
-        endpoint="http://testserver",
         flush_mode="immediate",
-        transport=test_transport,
+        http_client=test_client,
     ) as ctx:
         ctx.record_event("PLAN", {"steps": ["check_coverage", "approve"]})
         ev = ctx.record_evidence(
@@ -67,7 +65,7 @@ def test_context_manager_immediate_mode(test_transport):
         ctx.record_event("ACTION", {"approved": True}, evidence_ids=[ev.id])
 
     # Context exited successfully: verify integrity with a fresh client
-    client = TraceAIClient(endpoint="http://testserver", transport=test_transport)
+    client = TraceAIClient(http_client=test_client)
     integrity = client.verify_integrity(ctx.decision_id)
     assert integrity.valid is True
     # Initial + PLAN + ACTION + DECISION_COMPLETED = 4 events
@@ -75,21 +73,20 @@ def test_context_manager_immediate_mode(test_transport):
     client.close()
 
 
-def test_context_manager_batch_mode(test_transport):
+def test_context_manager_batch_mode(test_client):
     with DecisionContext(
         agent_id="batch_agent",
         agent_version="1.0.0",
         input_data={"job": "nightly_audit"},
-        endpoint="http://testserver",
         flush_mode="batch",
-        transport=test_transport,
+        http_client=test_client,
     ) as ctx:
         ctx.record_event("STEP_1", {"msg": "start"})
         ctx.record_event("STEP_2", {"msg": "processing"})
         ctx.record_event("STEP_3", {"msg": "finish"})
 
     # Context exit flushes batch: verify integrity
-    client = TraceAIClient(endpoint="http://testserver", transport=test_transport)
+    client = TraceAIClient(http_client=test_client)
     integrity = client.verify_integrity(ctx.decision_id)
     assert integrity.valid is True
     # Initial + 3 steps + DECISION_COMPLETED = 5 events
@@ -97,19 +94,18 @@ def test_context_manager_batch_mode(test_transport):
     client.close()
 
 
-def test_context_manager_exception_records_failure(test_transport):
+def test_context_manager_exception_records_failure(test_client):
     with pytest.raises(ValueError, match="Simulated agent failure"):
         with DecisionContext(
             agent_id="failing_agent",
             agent_version="1.0.0",
-            endpoint="http://testserver",
-            transport=test_transport,
+            http_client=test_client,
         ) as ctx:
             ctx.record_event("STARTED", {"step": 1})
             raise ValueError("Simulated agent failure")
 
     # Audit chain should STILL be cryptographically valid, with DECISION_FAILED recorded!
-    client = TraceAIClient(endpoint="http://testserver", transport=test_transport)
+    client = TraceAIClient(http_client=test_client)
     integrity = client.verify_integrity(ctx.decision_id)
     assert integrity.valid is True
     assert integrity.event_count == 3  # Initial + STARTED + DECISION_FAILED

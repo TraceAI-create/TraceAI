@@ -1,9 +1,11 @@
+from typing import Any
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.schemas.policy import PolicyCreate, PolicyResponse
+from app.services.policy_engine import PolicyEngine
 from app.services.policy_service import create_policy, get_policy, list_policies
 
 router = APIRouter(
@@ -47,3 +49,24 @@ def get_policy_detail(
     if not policy:
         raise HTTPException(status_code=404, detail="Policy not found")
     return policy
+
+
+@router.post(
+    "/evaluate/{decision_id}",
+    status_code=status.HTTP_200_OK,
+)
+def evaluate_decision_policies(
+    decision_id: uuid.UUID,
+    target_payload: dict[str, Any] = Body(default_factory=dict),
+    policy_id: uuid.UUID | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    engine = PolicyEngine(db)
+    result = engine.evaluate_decision(
+        decision_id=decision_id,
+        target_payload=target_payload,
+        policy_id=policy_id,
+    )
+    if not result.get("valid", True) and "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result

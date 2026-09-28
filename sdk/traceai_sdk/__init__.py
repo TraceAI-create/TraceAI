@@ -6,6 +6,7 @@ from traceai_sdk.exceptions import (
     TraceAIIntegrityError,
 )
 from traceai_sdk.hashing import canonical_json, hash_event, sha256
+from traceai_sdk.interceptors import TraceAICallbackHandler, instrument_tool
 from traceai_sdk.models import (
     AuditEventRecord,
     DecisionSession,
@@ -13,7 +14,7 @@ from traceai_sdk.models import (
     IntegrityCheckResult,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "DecisionContext",
@@ -28,4 +29,6 @@ __all__ = [
     "canonical_json",
     "hash_event",
     "sha256",
+    "instrument_tool",
+    "TraceAICallbackHandler",
 ]

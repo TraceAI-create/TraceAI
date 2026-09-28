@@ -16,22 +16,29 @@ class TraceAIClient:
         endpoint: str = "http://localhost:8000",
         api_key: str | None = None,
         timeout: float = 15.0,
+        http_client: httpx.Client | None = None,
         transport: httpx.BaseTransport | None = None,
     ):
         self.endpoint = endpoint.rstrip("/")
         self.timeout = timeout
-        headers = {"Content-Type": "application/json"}
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
-        self._client = httpx.Client(
-            base_url=self.endpoint,
-            headers=headers,
-            timeout=self.timeout,
-            transport=transport,
-        )
+        if http_client is not None:
+            self._client = http_client
+            self._owns_client = False
+        else:
+            headers = {"Content-Type": "application/json"}
+            if api_key:
+                headers["Authorization"] = f"Bearer {api_key}"
+            self._client = httpx.Client(
+                base_url=self.endpoint,
+                headers=headers,
+                timeout=self.timeout,
+                transport=transport,
+            )
+            self._owns_client = True
 
     def close(self) -> None:
-        self._client.close()
+        if getattr(self, "_owns_client", True):
+            self._client.close()
 
     def __enter__(self):
         return self
@@ -125,3 +132,21 @@ class TraceAIClient:
         if res.status_code != 200:
             raise TraceAIAPIError(f"Failed to check integrity: {res.text}", status_code=res.status_code)
         return IntegrityCheckResult(**res.json())
+
+    def evaluate_policies(
+        self,
+        decision_id: UUID | str,
+        target_payload: dict[str, Any] | None = None,
+        policy_id: UUID | str | None = None,
+    ) -> dict[str, Any]:
+        params = {}
+        if policy_id:
+            params["policy_id"] = str(policy_id)
+        res = self._client.post(
+            f"/api/v1/policies/evaluate/{decision_id}",
+            json=target_payload or {},
+            params=params,
+        )
+        if res.status_code != 200:
+            raise TraceAIAPIError(f"Failed to evaluate policies: {res.text}", status_code=res.status_code)
+        return res.json()

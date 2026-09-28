@@ -1,13 +1,41 @@
 """
 Sample Agent: Loan Underwriting & Risk Assessment
 Demonstrating TraceAI Audit SDK instrumentation:
-Plan -> Retrieve Evidence -> Reason -> Take Action
+Plan -> Retrieve Evidence (Instrumented Tools) -> Policy Evaluation -> Reason -> Take Action
 """
 
 import argparse
 import sys
 import time
-from traceai_sdk import DecisionContext, TraceAIClient
+from traceai_sdk import DecisionContext, TraceAIClient, instrument_tool
+
+
+# -------------------------------------------------------------
+# Instrumented Tools (Auto-captures arguments, latency, snapshots)
+# -------------------------------------------------------------
+@instrument_tool(name="fetch_credit_bureau_data", snapshot=True)
+def fetch_credit_bureau_data(applicant: str, bureau: str = "Experian") -> dict:
+    time.sleep(0.15)
+    return {
+        "bureau": bureau,
+        "applicant": applicant,
+        "score": 760,
+        "open_lines": 6,
+        "delinquencies": 0,
+        "oldest_account_years": 12,
+        "monthly_debt_obligations": 1400,
+    }
+
+
+@instrument_tool(name="run_anti_fraud_check")
+def run_anti_fraud_check(applicant: str, requested_amount: int) -> dict:
+    time.sleep(0.08)
+    return {
+        "applicant": applicant,
+        "fraud_risk_score": 12,
+        "identity_verified": True,
+        "decision": "LOW_RISK",
+    }
 
 
 def run_loan_agent(
@@ -15,7 +43,7 @@ def run_loan_agent(
     credit_score: int = 760,
     requested_amount: int = 45000,
     annual_income: int = 110000,
-    endpoint: str = "http://localhost:8000",
+    endpoint: str = "http://127.0.0.1:8000",
 ):
     print("=" * 60)
     print(f"[*] Starting Loan Underwriting Agent for {applicant_name}")
@@ -31,7 +59,7 @@ def run_loan_agent(
 
     with DecisionContext(
         agent_id="loan_underwriter_agent",
-        agent_version="1.2.0",
+        agent_version="1.3.0",
         input_data=input_payload,
         endpoint=endpoint,
         flush_mode="immediate",
@@ -46,48 +74,44 @@ def run_loan_agent(
         plan_data = {
             "steps": [
                 "fetch_credit_report",
+                "run_fraud_check",
+                "evaluate_governance_policy",
                 "calculate_debt_to_income",
-                "evaluate_underwriting_policy",
                 "generate_recommendation",
             ],
             "max_risk_tolerance": "moderate",
         }
         ctx.record_event("PLAN_GENERATED", plan_data)
         print("  -> Plan recorded in audit chain.")
-        time.sleep(0.5)
 
         # ---------------------------------------------------------
-        # STEP 2: RETRIEVE EVIDENCE
+        # STEP 2: RETRIEVE EVIDENCE VIA INSTRUMENTED TOOLS
         # ---------------------------------------------------------
-        print("\n--- [Step 2: Retrieving Evidence Snapshots] ---")
-        bureau_report = {
-            "bureau": "Experian",
-            "score": credit_score,
-            "open_lines": 6,
-            "delinquencies": 0,
-            "oldest_account_years": 12,
-            "monthly_debt_obligations": 1400,
-        }
-        ev_report = ctx.record_evidence(
-            evidence_type="credit_bureau_snapshot",
-            content=bureau_report,
-            metadata={"source": "api.experian.internal", "timestamp": "2026-09-27T12:00:00Z"},
-            role="retrieved_credit_record",
-        )
-        print(f"  -> Evidence stored in Content-Addressable Store: SHA256={ev_report.content_hash[:16]}...")
+        print("\n--- [Step 2: Retrieving Evidence via @instrument_tool] ---")
+        bureau_report = fetch_credit_bureau_data(applicant=applicant_name)
+        print("  -> fetch_credit_bureau_data completed & automatically stored in Evidence Store.")
 
-        ctx.record_event(
-            "TOOL_CALL_COMPLETED",
-            payload={"tool": "experian_api", "status_code": 200, "bureau": "Experian"},
-            evidence_ids=[ev_report.id],
-        )
-        print(f"  -> Event linked to evidence artifact {ev_report.id}")
-        time.sleep(0.5)
+        fraud_check = run_anti_fraud_check(applicant=applicant_name, requested_amount=requested_amount)
+        print(f"  -> run_anti_fraud_check completed (Risk Score: {fraud_check['fraud_risk_score']}).")
 
         # ---------------------------------------------------------
-        # STEP 3: REASON (LLM Inference Simulation)
+        # STEP 3: POLICY EVALUATION (Policy Engine)
         # ---------------------------------------------------------
-        print("\n--- [Step 3: Reasoning & Policy Evaluation] ---")
+        print("\n--- [Step 3: Governance Policy Evaluation] ---")
+        try:
+            policy_eval = ctx.evaluate_policies(
+                target_payload={"requested_amount": requested_amount, "credit_score": credit_score}
+            )
+            print(f"  -> Policy evaluation: Passed = {policy_eval.get('passed', True)}")
+            if policy_eval.get("violations"):
+                print(f"  -> Warning: {len(policy_eval['violations'])} policy violation(s) detected!")
+        except Exception as e:
+            print(f"  -> Policy evaluation note: {e}")
+
+        # ---------------------------------------------------------
+        # STEP 4: REASON (LLM Inference Simulation)
+        # ---------------------------------------------------------
+        print("\n--- [Step 4: Reasoning & Analysis] ---")
         monthly_income = annual_income / 12
         monthly_debt = bureau_report["monthly_debt_obligations"]
         dti_ratio = round((monthly_debt / monthly_income) * 100, 2)
@@ -106,12 +130,11 @@ def run_loan_agent(
         }
         ctx.record_event("MODEL_INFERENCE", reasoning_payload)
         print(f"  -> Reasoning logged: DTI={dti_ratio}%, Confidence={reasoning_payload['confidence_score']}")
-        time.sleep(0.5)
 
         # ---------------------------------------------------------
-        # STEP 4: TAKE ACTION
+        # STEP 5: TAKE ACTION
         # ---------------------------------------------------------
-        print("\n--- [Step 4: Executing Final Action] ---")
+        print("\n--- [Step 5: Executing Final Action] ---")
         action_payload = {
             "action": "APPROVE_LOAN",
             "approved_amount": requested_amount,
@@ -139,17 +162,25 @@ def run_loan_agent(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run TraceAI Sample Underwriting Agent")
-    parser.add_argument("--endpoint", default="http://localhost:8000", help="TraceAI API endpoint")
+    parser.add_argument("--endpoint", default="http://127.0.0.1:8000", help="TraceAI API endpoint")
     parser.add_argument("--applicant", default="Sarah Connor", help="Applicant name")
     parser.add_argument("--score", type=int, default=760, help="Credit score")
     parser.add_argument("--amount", type=int, default=45000, help="Requested loan amount")
     parser.add_argument("--income", type=int, default=110000, help="Annual income")
     args = parser.parse_args()
 
-    run_loan_agent(
-        applicant_name=args.applicant,
-        credit_score=args.score,
-        requested_amount=args.amount,
-        annual_income=args.income,
-        endpoint=args.endpoint,
-    )
+    try:
+        run_loan_agent(
+            applicant_name=args.applicant,
+            credit_score=args.score,
+            requested_amount=args.amount,
+            annual_income=args.income,
+            endpoint=args.endpoint,
+        )
+    except Exception as e:
+        if "actively refused" in str(e) or "ConnectError" in type(e).__name__:
+            print(f"\n[!] Error: Unable to connect to TraceAI backend at {args.endpoint}.")
+            print("    Please ensure the backend is running. Run:")
+            print("    uvicorn app.main:app --host 127.0.0.1 --port 8000")
+            sys.exit(1)
+        raise
