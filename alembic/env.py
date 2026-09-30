@@ -1,3 +1,9 @@
+"""Alembic migration environment configuration.
+
+Configures database connection and model metadata for running migrations
+in online or offline mode.
+"""
+
 from logging.config import fileConfig
 
 from alembic import context
@@ -19,7 +25,7 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode."""
+    """Run migrations in offline mode without an active database connection."""
 
     url = settings.database_url
 
@@ -35,7 +41,7 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode."""
+    """Run migrations in online mode with an active database connection."""
 
     configuration = config.get_section(config.config_ini_section)
 

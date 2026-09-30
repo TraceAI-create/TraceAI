@@ -1,3 +1,5 @@
+"""Pydantic schemas for replay simulation and diff reporting."""
+
 from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
@@ -5,6 +7,8 @@ from pydantic import BaseModel, Field
 
 
 class ReplayRequest(BaseModel):
+    """Configuration options for executing a decision replay."""
+
     mode: Literal["deterministic", "what_if"] = "deterministic"
     override_inputs: dict[str, Any] = Field(
         default_factory=dict,
@@ -25,12 +29,16 @@ class ReplayRequest(BaseModel):
 
 
 class ActionDiff(BaseModel):
+    """Comparison of original and replayed final actions."""
+
     original: Any = None
     replayed: Any = None
     match: bool = True
 
 
 class ToolCallDiff(BaseModel):
+    """Comparison between an original tool call and its replayed call."""
+
     tool_name: str
     original_args: dict[str, Any] = Field(default_factory=dict)
     replayed_args: dict[str, Any] = Field(default_factory=dict)
@@ -39,6 +47,8 @@ class ToolCallDiff(BaseModel):
 
 
 class DiffSummary(BaseModel):
+    """Comprehensive comparison summary between original and replayed executions."""
+
     is_match: bool
     status: Literal["matched", "diverged", "failed"]
     overall_similarity: float
@@ -54,6 +64,8 @@ class DiffSummary(BaseModel):
 
 
 class ReplayResponse(BaseModel):
+    """Complete detail view of a replay run and its diff summary."""
+
     id: UUID
     decision_id: UUID
     status: str
@@ -65,6 +77,8 @@ class ReplayResponse(BaseModel):
 
 
 class ReplaySummaryItem(BaseModel):
+    """Summary view of a replay run for list responses."""
+
     id: UUID
     decision_id: UUID
     status: str

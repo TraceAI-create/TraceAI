@@ -1,13 +1,19 @@
+"""Cryptographic hashing utilities for TraceAI.
+
+Provides deterministic JSON serialization and SHA-256 hashing to build
+tamper-evident audit chains for decisions and events.
+"""
+
 import hashlib
 import json
 from typing import Any
 
 
 def canonical_json(data: Any) -> str:
-    """
-    Convert data into a deterministic JSON representation.
+    """Convert data into a standard JSON string.
 
-    The same logical data must always produce the same byte sequence.
+    Keys are sorted and spacing is consistent so the same data
+    always produces the exact same string and hash.
     """
     return json.dumps(
         data,
@@ -19,7 +25,7 @@ def canonical_json(data: Any) -> str:
 
 
 def sha256(data: str) -> str:
-    """Return the SHA-256 hex digest of a string."""
+    """Return the SHA-256 hash string of the input text."""
     return hashlib.sha256(
         data.encode("utf-8")
     ).hexdigest()
@@ -32,11 +38,10 @@ def hash_event(
     payload: dict,
     previous_hash: str | None,
 ) -> str:
-    """
-    Generate the cryptographic hash for an audit event.
+    """Generate a cryptographic hash for an audit event.
 
-    The previous event hash is included so that events form
-    a tamper-evident hash chain.
+    Includes the previous event's hash so that all events are securely
+    linked together in a chain. Any tampering will break the chain.
     """
     material = {
         "event_type": event_type,

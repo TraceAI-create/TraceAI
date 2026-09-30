@@ -1,3 +1,5 @@
+"""Tests for tool and LangChain interceptors."""
+
 import asyncio
 import uuid
 import pytest
@@ -11,10 +13,12 @@ from traceai_sdk.interceptors import TraceAICallbackHandler, instrument_tool
 
 @pytest.fixture
 def test_client():
+    """Fixture providing a FastAPI TestClient instance."""
     return TestClient(app)
 
 
 def test_instrument_tool_decorator_sync(test_client):
+    """Test the @instrument_tool decorator on a synchronous function."""
     @instrument_tool(name="calculate_mortgage", snapshot=False)
     def calculate_mortgage(principal: float, rate: float, years: int) -> dict:
         return {"monthly_payment": 1850.50, "status": "calculated"}
@@ -36,6 +40,7 @@ def test_instrument_tool_decorator_sync(test_client):
 
 
 def test_instrument_tool_large_output_auto_snapshot(test_client):
+    """Test automatic evidence store offloading for tool outputs when snapshot=True."""
     @instrument_tool(name="fetch_full_credit_dossier", snapshot=True)
     def fetch_credit_dossier(user_id: str) -> dict:
         return {
@@ -58,6 +63,7 @@ def test_instrument_tool_large_output_auto_snapshot(test_client):
 
 
 def test_instrument_tool_exception_captured(test_client):
+    """Test that tool exceptions are captured as TOOL_CALL_FAILED events in the audit chain."""
     @instrument_tool(name="flaky_service")
     def flaky_service():
         raise ConnectionResetError("Remote server disconnected")
@@ -78,6 +84,7 @@ def test_instrument_tool_exception_captured(test_client):
 
 
 def test_instrument_tool_async(test_client):
+    """Test the @instrument_tool decorator on an asynchronous function."""
     @instrument_tool(name="async_database_lookup")
     async def async_lookup(account_id: str):
         await asyncio.sleep(0.01)
@@ -101,6 +108,7 @@ def test_instrument_tool_async(test_client):
 
 
 def test_langchain_callback_handler(test_client):
+    """Test the TraceAICallbackHandler recording LLM and tool calls into DecisionContext."""
     from langchain_core.outputs import LLMResult, Generation
 
     with DecisionContext(
@@ -111,7 +119,7 @@ def test_langchain_callback_handler(test_client):
         handler = TraceAICallbackHandler(ctx)
         run_id = uuid.uuid4()
 
-        # Simulate LLM Start and End
+        # Simulate language model start and end
         handler.on_llm_start(
             serialized={"name": "ChatOpenAI"},
             prompts=["Analyze this loan request: applicant Sarah Connor"],
@@ -127,7 +135,7 @@ def test_langchain_callback_handler(test_client):
             run_id=run_id,
         )
 
-        # Simulate Tool Call
+        # Simulate tool execution
         tool_run_id = uuid.uuid4()
         handler.on_tool_start(
             serialized={"name": "identity_verifier"},

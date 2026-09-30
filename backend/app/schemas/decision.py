@@ -1,3 +1,5 @@
+"""Pydantic schemas for decision sessions, evidence links, reviews, and integrity status."""
+
 import uuid
 from datetime import datetime
 
@@ -5,12 +7,16 @@ from pydantic import BaseModel, Field
 
 
 class DecisionCreate(BaseModel):
+    """Input payload to start a new decision session."""
+
     agent_id: str = Field(min_length=1)
     agent_version: str = Field(min_length=1)
     input_data: dict = Field(default_factory=dict)
 
 
 class EventResponse(BaseModel):
+    """Audit event details returned inside a decision response."""
+
     id: uuid.UUID
     event_type: str
     sequence_number: int
@@ -21,6 +27,8 @@ class EventResponse(BaseModel):
 
 
 class EvidenceLinkResponse(BaseModel):
+    """Details of an evidence item linked to a decision."""
+
     id: uuid.UUID
     evidence_id: uuid.UUID
     role: str
@@ -28,6 +36,8 @@ class EvidenceLinkResponse(BaseModel):
 
 
 class ReviewActionResponse(BaseModel):
+    """Details of a human review action on a decision."""
+
     id: uuid.UUID
     reviewer_id: str
     action: str
@@ -36,6 +46,8 @@ class ReviewActionResponse(BaseModel):
 
 
 class DecisionSummaryResponse(BaseModel):
+    """Summary view of a decision used in listing endpoints."""
+
     id: uuid.UUID
     agent_id: str
     agent_version: str
@@ -46,6 +58,8 @@ class DecisionSummaryResponse(BaseModel):
 
 
 class DecisionResponse(BaseModel):
+    """Complete detail view of a decision, its event chain, evidence, and reviews."""
+
     id: uuid.UUID
     agent_id: str
     agent_version: str
@@ -59,6 +73,8 @@ class DecisionResponse(BaseModel):
 
 
 class IntegrityResponse(BaseModel):
+    """Cryptographic audit chain verification result for a decision."""
+
     valid: bool
     event_count: int | None = None
     root_hash: str | None = None

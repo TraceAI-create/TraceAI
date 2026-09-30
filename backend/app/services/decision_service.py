@@ -1,3 +1,5 @@
+"""Service functions for creating, querying, and verifying decisions."""
+
 import uuid
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -12,7 +14,7 @@ def create_decision(
     db: Session,
     data: DecisionCreate,
 ) -> Decision:
-    """Create a decision and its initial audit event."""
+    """Create a new decision record and log its first audit event."""
     decision = Decision(
         agent_id=data.agent_id,
         agent_version=data.agent_version,
@@ -23,6 +25,7 @@ def create_decision(
     db.add(decision)
     db.flush()
 
+    # Record the initial decision creation event in the audit chain
     recorder = EventRecorder(db)
     recorder.record(
         decision,
@@ -43,7 +46,7 @@ def get_decision(
     db: Session,
     decision_id: uuid.UUID,
 ) -> Decision | None:
-    """Retrieve a decision by ID."""
+    """Fetch a single decision by its unique ID."""
     return db.get(Decision, decision_id)
 
 
@@ -54,7 +57,7 @@ def list_decisions(
     agent_id: str | None = None,
     status: str | None = None,
 ) -> list[DecisionSummaryResponse]:
-    """List decisions with basic filters and event counts."""
+    """List decisions with basic filters and total event counts."""
     query = (
         db.query(
             Decision,
@@ -92,7 +95,7 @@ def update_decision_status(
     decision_id: uuid.UUID,
     status: str,
 ) -> Decision | None:
-    """Update decision execution status (e.g. running, completed, failed, reviewed)."""
+    """Update the status of a decision (such as running, completed, or failed)."""
     decision = db.get(Decision, decision_id)
     if not decision:
         return None
@@ -115,7 +118,7 @@ def link_evidence(
     evidence_id: uuid.UUID,
     role: str = "context",
 ) -> DecisionEvidence | None:
-    """Link an existing evidence artifact to a decision."""
+    """Attach an existing evidence record to a decision with a specific role."""
     decision = db.get(Decision, decision_id)
     evidence = db.get(Evidence, evidence_id)
     if not decision or not evidence:
@@ -136,13 +139,12 @@ def verify_decision_integrity(
     db: Session,
     decision_id: uuid.UUID,
 ) -> dict:
-    """
-    Verify the cryptographic integrity of a decision's audit chain.
+    """Verify that a decision's audit chain has not been altered.
 
-    Checks:
-    1. Every event's stored hash matches its contents.
-    2. Every event points to the previous event's hash.
-    3. The decision root hash matches the latest event.
+    Checks three rules:
+    1. Each event's saved hash matches the hash of its content.
+    2. Each event links to the correct previous event hash.
+    3. The decision's final root hash matches the latest event hash.
     """
     decision = db.get(Decision, decision_id)
 
@@ -175,6 +177,7 @@ def verify_decision_integrity(
             previous_hash=event.previous_hash,
         )
 
+        # Check rule 1: does the calculated hash match the stored hash?
         if calculated_hash != event.event_hash:
             return {
                 "valid": False,
@@ -183,6 +186,7 @@ def verify_decision_integrity(
                 "sequence_number": event.sequence_number,
             }
 
+        # Check rule 2: does the event point to the previous event's hash?
         if event.previous_hash != previous_hash:
             return {
                 "valid": False,
@@ -193,6 +197,7 @@ def verify_decision_integrity(
 
         previous_hash = event.event_hash
 
+    # Check rule 3: does the stored decision root hash match the last event?
     if decision.root_hash != previous_hash:
         return {
             "valid": False,

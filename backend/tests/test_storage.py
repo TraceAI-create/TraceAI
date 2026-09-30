@@ -1,9 +1,12 @@
+"""Tests for local disk content-addressable storage provider."""
+
 import hashlib
 import tempfile
 from app.storage.local_disk import LocalDiskStorage
 
 
 def test_local_storage_store_and_retrieve():
+    """Test saving content to disk and retrieving it by its storage URI."""
     with tempfile.TemporaryDirectory() as tmpdir:
         storage = LocalDiskStorage(base_dir=tmpdir)
         payload = b"content to be hashed and stored in traceai evidence store"
@@ -18,6 +21,7 @@ def test_local_storage_store_and_retrieve():
 
 
 def test_storage_content_addressable_deduplication():
+    """Test that storing identical content returns the same hash and URI."""
     with tempfile.TemporaryDirectory() as tmpdir:
         storage = LocalDiskStorage(base_dir=tmpdir)
         payload = b"identical duplicate document"

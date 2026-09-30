@@ -1,3 +1,5 @@
+"""API endpoints for managing decisions, audit events, and human reviews."""
+
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -37,6 +39,7 @@ def register_decision(
     data: DecisionCreate,
     db: Session = Depends(get_db),
 ):
+    """Create a new decision session and record its initial event."""
     return create_decision(db, data)
 
 
@@ -51,6 +54,7 @@ def get_decisions(
     status: str | None = None,
     db: Session = Depends(get_db),
 ):
+    """List decisions with optional filters by agent ID or status."""
     return list_decisions(db, skip=skip, limit=limit, agent_id=agent_id, status=status)
 
 
@@ -62,6 +66,7 @@ def check_decision_integrity(
     decision_id: uuid.UUID,
     db: Session = Depends(get_db),
 ):
+    """Verify that the decision's audit chain has not been tampered with."""
     result = verify_decision_integrity(db, decision_id)
 
     if result.get("reason") == "Decision not found":
@@ -81,6 +86,7 @@ def read_decision(
     decision_id: uuid.UUID,
     db: Session = Depends(get_db),
 ):
+    """Get the full details of a decision including its events, evidence, and reviews."""
     decision = get_decision(db, decision_id)
 
     if decision is None:
@@ -102,6 +108,7 @@ def append_event(
     data: EventCreate,
     db: Session = Depends(get_db),
 ):
+    """Append a single audit event to the decision's hash chain."""
     decision = db.get(Decision, decision_id)
     if not decision:
         raise HTTPException(status_code=404, detail="Decision not found")
@@ -128,6 +135,7 @@ def append_events_batch(
     data: BatchEventCreate,
     db: Session = Depends(get_db),
 ):
+    """Append multiple audit events in order to the decision's hash chain."""
     decision = db.get(Decision, decision_id)
     if not decision:
         raise HTTPException(status_code=404, detail="Decision not found")
@@ -151,6 +159,7 @@ def attach_evidence_to_decision(
     role: str = Query("context"),
     db: Session = Depends(get_db),
 ):
+    """Link an existing evidence artifact to a decision with a given role."""
     link = link_evidence(db, decision_id, evidence_id, role=role)
     if not link:
         raise HTTPException(status_code=404, detail="Decision or Evidence not found")
@@ -167,6 +176,7 @@ def submit_review(
     data: ReviewCreate,
     db: Session = Depends(get_db),
 ):
+    """Submit a human auditor review (approved, rejected, challenged, or commented)."""
     review = create_review(db, decision_id, data)
     if not review:
         raise HTTPException(status_code=404, detail="Decision not found")
@@ -181,4 +191,5 @@ def get_decision_reviews(
     decision_id: uuid.UUID,
     db: Session = Depends(get_db),
 ):
+    """List all human reviews recorded for a specific decision."""
     return list_reviews_for_decision(db, decision_id)

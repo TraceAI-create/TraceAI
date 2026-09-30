@@ -1,3 +1,5 @@
+"""LangChain and LangGraph callback handler for TraceAI auditing."""
+
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -14,11 +16,9 @@ from traceai_sdk.context import DecisionContext
 
 
 class TraceAICallbackHandler(BaseCallbackHandler):
-    """
-    LangChain & LangGraph callback handler that streams events and snapshots
-    into an active TraceAI DecisionContext.
+    """LangChain callback handler that records agent events into a DecisionContext.
 
-    Usage:
+    Example:
         handler = TraceAICallbackHandler(ctx)
         agent_executor.invoke({"input": "..."}, config={"callbacks": [handler]})
     """
@@ -39,6 +39,7 @@ class TraceAICallbackHandler(BaseCallbackHandler):
         metadata: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
+        """Record the start of a language model call."""
         model_name = (
             (metadata or {}).get("ls_model_name")
             or (serialized or {}).get("name")
@@ -62,6 +63,7 @@ class TraceAICallbackHandler(BaseCallbackHandler):
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> None:
+        """Record the completion of a language model call."""
         generations = []
         try:
             for gen_list in response.generations:
@@ -90,6 +92,7 @@ class TraceAICallbackHandler(BaseCallbackHandler):
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> None:
+        """Record a failure during a language model call."""
         self.ctx.record_event(
             "LLM_INVOCATION_FAILED",
             payload={
@@ -108,6 +111,7 @@ class TraceAICallbackHandler(BaseCallbackHandler):
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> None:
+        """Record the start of a tool invocation."""
         tool_name = (serialized or {}).get("name") or "tool"
         self.ctx.record_event(
             "TOOL_CALL_STARTED",
@@ -126,10 +130,14 @@ class TraceAICallbackHandler(BaseCallbackHandler):
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> None:
+        """Record the completion of a tool invocation.
+
+        Large outputs (over 1 KB) are saved to the evidence store.
+        """
         output_str = str(output)
         evidence_ids = []
 
-        # If output is large (>1KB), store as evidence artifact
+        # If output is large (greater than 1 KB), save it in the evidence store
         if len(output_str.encode("utf-8")) > 1024:
             ev = self.ctx.record_evidence(
                 evidence_type="langchain_tool_output",
@@ -158,6 +166,7 @@ class TraceAICallbackHandler(BaseCallbackHandler):
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> None:
+        """Record a failure during a tool call."""
         self.ctx.record_event(
             "TOOL_CALL_FAILED",
             payload={
@@ -176,6 +185,7 @@ class TraceAICallbackHandler(BaseCallbackHandler):
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> None:
+        """Record the start of a chain execution."""
         chain_name = (serialized or {}).get("name") or (serialized or {}).get("id", ["Chain"])[-1]
         self.ctx.record_event(
             "CHAIN_EXECUTION_STARTED",
@@ -193,6 +203,7 @@ class TraceAICallbackHandler(BaseCallbackHandler):
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> None:
+        """Record the successful completion of a chain."""
         self.ctx.record_event(
             "CHAIN_EXECUTION_COMPLETED",
             payload={
@@ -209,6 +220,7 @@ class TraceAICallbackHandler(BaseCallbackHandler):
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> None:
+        """Record a failure during chain execution."""
         self.ctx.record_event(
             "CHAIN_EXECUTION_FAILED",
             payload={

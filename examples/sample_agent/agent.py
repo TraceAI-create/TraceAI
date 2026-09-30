@@ -1,7 +1,11 @@
-"""
-Sample Agent: Loan Underwriting & Risk Assessment
-Demonstrating TraceAI Audit SDK instrumentation:
-Plan -> Retrieve Evidence (Instrumented Tools) -> Policy Evaluation -> Reason -> Take Action
+"""Sample Agent: Loan Underwriting & Risk Assessment.
+
+Demonstrates how to use the TraceAI SDK to audit an agent workflow:
+1. Plan the decision steps.
+2. Call tools to gather evidence.
+3. Evaluate policies against business rules.
+4. Run model reasoning.
+5. Take an action and verify the cryptographic audit chain.
 """
 
 import argparse
@@ -10,11 +14,10 @@ import time
 from traceai_sdk import DecisionContext, TraceAIClient, instrument_tool
 
 
-# -------------------------------------------------------------
-# Instrumented Tools (Auto-captures arguments, latency, snapshots)
-# -------------------------------------------------------------
+# Tool definitions instrumented to automatically log inputs, run times, and outputs
 @instrument_tool(name="fetch_credit_bureau_data", snapshot=True)
 def fetch_credit_bureau_data(applicant: str, bureau: str = "Experian") -> dict:
+    """Fetch simulated credit bureau records for an applicant."""
     time.sleep(0.15)
     return {
         "bureau": bureau,
@@ -29,6 +32,7 @@ def fetch_credit_bureau_data(applicant: str, bureau: str = "Experian") -> dict:
 
 @instrument_tool(name="run_anti_fraud_check")
 def run_anti_fraud_check(applicant: str, requested_amount: int) -> dict:
+    """Run simulated fraud and identity checks for an applicant."""
     time.sleep(0.08)
     return {
         "applicant": applicant,
@@ -45,6 +49,7 @@ def run_loan_agent(
     annual_income: int = 110000,
     endpoint: str = "http://127.0.0.1:8000",
 ):
+    """Run the loan underwriting agent workflow."""
     print("=" * 60)
     print(f"[*] Starting Loan Underwriting Agent for {applicant_name}")
     print(f"[*] Connecting to TraceAI Audit System at: {endpoint}")
@@ -57,6 +62,7 @@ def run_loan_agent(
         "annual_income": annual_income,
     }
 
+    # Start a traced decision session
     with DecisionContext(
         agent_id="loan_underwriter_agent",
         agent_version="1.3.0",
@@ -67,9 +73,7 @@ def run_loan_agent(
     ) as ctx:
         print(f"\n[+] Decision session created. ID: {ctx.decision_id}")
 
-        # ---------------------------------------------------------
-        # STEP 1: PLAN
-        # ---------------------------------------------------------
+        # Step 1: Record the execution plan
         print("\n--- [Step 1: Planning Execution] ---")
         plan_data = {
             "steps": [
@@ -84,9 +88,7 @@ def run_loan_agent(
         ctx.record_event("PLAN_GENERATED", plan_data)
         print("  -> Plan recorded in audit chain.")
 
-        # ---------------------------------------------------------
-        # STEP 2: RETRIEVE EVIDENCE VIA INSTRUMENTED TOOLS
-        # ---------------------------------------------------------
+        # Step 2: Retrieve evidence using instrumented tools
         print("\n--- [Step 2: Retrieving Evidence via @instrument_tool] ---")
         bureau_report = fetch_credit_bureau_data(applicant=applicant_name)
         print("  -> fetch_credit_bureau_data completed & automatically stored in Evidence Store.")
@@ -94,9 +96,7 @@ def run_loan_agent(
         fraud_check = run_anti_fraud_check(applicant=applicant_name, requested_amount=requested_amount)
         print(f"  -> run_anti_fraud_check completed (Risk Score: {fraud_check['fraud_risk_score']}).")
 
-        # ---------------------------------------------------------
-        # STEP 3: POLICY EVALUATION (Policy Engine)
-        # ---------------------------------------------------------
+        # Step 3: Evaluate governance policies
         print("\n--- [Step 3: Governance Policy Evaluation] ---")
         try:
             policy_eval = ctx.evaluate_policies(
@@ -108,9 +108,7 @@ def run_loan_agent(
         except Exception as e:
             print(f"  -> Policy evaluation note: {e}")
 
-        # ---------------------------------------------------------
-        # STEP 4: REASON (LLM Inference Simulation)
-        # ---------------------------------------------------------
+        # Step 4: Record model reasoning and risk analysis
         print("\n--- [Step 4: Reasoning & Analysis] ---")
         monthly_income = annual_income / 12
         monthly_debt = bureau_report["monthly_debt_obligations"]
@@ -131,9 +129,7 @@ def run_loan_agent(
         ctx.record_event("MODEL_INFERENCE", reasoning_payload)
         print(f"  -> Reasoning logged: DTI={dti_ratio}%, Confidence={reasoning_payload['confidence_score']}")
 
-        # ---------------------------------------------------------
-        # STEP 5: TAKE ACTION
-        # ---------------------------------------------------------
+        # Step 5: Execute final action
         print("\n--- [Step 5: Executing Final Action] ---")
         action_payload = {
             "action": "APPROVE_LOAN",
@@ -145,7 +141,7 @@ def run_loan_agent(
         ctx.record_event("ACTION_TAKEN", action_payload)
         print(f"  -> Action taken: {action_payload['action']} (${action_payload['approved_amount']:,})")
 
-    # Outside the context manager: DecisionContext has logged DECISION_COMPLETED and verified integrity
+    # Verify the cryptographic integrity of the decision chain
     print("\n" + "=" * 60)
     print("[*] Verifying Decision Cryptographic Audit Trail...")
     client = TraceAIClient(endpoint=endpoint)

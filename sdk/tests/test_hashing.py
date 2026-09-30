@@ -1,18 +1,21 @@
+"""Tests comparing SDK hashing behavior with backend hashing behavior."""
+
 from app.core.hashing import canonical_json as backend_canonical, hash_event as backend_hash
 from traceai_sdk.hashing import canonical_json as sdk_canonical, hash_event as sdk_hash
 
 
 def test_sdk_and_backend_hashing_parity():
+    """Verify that SDK and backend produce identical canonical JSON and SHA-256 event hashes."""
     payload = {
         "user": {"id": 101, "tags": ["admin", "beta"]},
         "timestamp": "2026-09-27T12:00:00Z",
         "nested": {"z": 1, "a": 2},
     }
 
-    # Verify canonical JSON matches between SDK and backend
+    # Verify canonical JSON output matches exactly between SDK and backend
     assert sdk_canonical(payload) == backend_canonical(payload)
 
-    # Verify event hash matches
+    # Verify generated event hashes match exactly between SDK and backend
     h_sdk = sdk_hash(
         event_type="TOOL_INVOKED",
         timestamp="2026-09-27T12:00:00Z",

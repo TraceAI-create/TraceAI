@@ -1,3 +1,5 @@
+"""Pydantic data models for the TraceAI SDK."""
+
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -5,6 +7,8 @@ from pydantic import BaseModel, Field
 
 
 class DecisionSession(BaseModel):
+    """Represents an active decision session."""
+
     id: UUID
     agent_id: str
     agent_version: str
@@ -15,6 +19,8 @@ class DecisionSession(BaseModel):
 
 
 class AuditEventRecord(BaseModel):
+    """Represents a recorded audit event in the hash chain."""
+
     id: UUID
     decision_id: UUID
     event_type: str
@@ -26,6 +32,8 @@ class AuditEventRecord(BaseModel):
 
 
 class EvidenceRef(BaseModel):
+    """Reference to a stored evidence item."""
+
     id: UUID
     type: str
     content_hash: str
@@ -35,6 +43,8 @@ class EvidenceRef(BaseModel):
 
 
 class IntegrityCheckResult(BaseModel):
+    """Result of an audit chain integrity verification check."""
+
     valid: bool
     event_count: int | None = None
     root_hash: str | None = None

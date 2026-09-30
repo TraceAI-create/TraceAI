@@ -1,3 +1,5 @@
+"""Service for appending audit events to a decision's tamper-evident hash chain."""
+
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
@@ -7,9 +9,7 @@ from app.db.models import AuditEvent, Decision, DecisionEvidence, Evidence
 
 
 class EventRecorder:
-    """
-    Central service responsible for recording audit events into the hash chain.
-    """
+    """Service that computes hashes and appends events to the decision audit chain."""
 
     def __init__(self, db: Session):
         self.db = db
@@ -22,9 +22,13 @@ class EventRecorder:
         payload: dict,
         evidence_ids: list[uuid.UUID] | None = None,
     ) -> AuditEvent:
+        """Append a single event to a decision's audit chain.
+
+        Finds the last event in the chain, increments the sequence number,
+        computes the new event hash linked to the previous hash, and updates
+        the decision's root hash.
         """
-        Append a single new event to a decision's audit chain.
-        """
+        # Get the latest event in the decision's chain
         last_event = (
             self.db.query(AuditEvent)
             .filter(AuditEvent.decision_id == decision.id)
@@ -36,6 +40,7 @@ class EventRecorder:
         previous_hash = None if last_event is None else last_event.event_hash
         timestamp = datetime.now(timezone.utc)
 
+        # Compute cryptographic hash for this event
         event_hash = hash_event(
             event_type=event_type,
             timestamp=timestamp.isoformat(),
@@ -56,9 +61,10 @@ class EventRecorder:
         self.db.add(event)
         decision.root_hash = event_hash
 
+        # Link any evidence records referenced by this event
         if evidence_ids:
             for ev_id in evidence_ids:
-                # verify evidence exists
+                # Check that the evidence record exists before linking
                 ev = self.db.get(Evidence, ev_id)
                 if ev:
                     link = DecisionEvidence(
@@ -75,9 +81,9 @@ class EventRecorder:
         decision: Decision,
         events: list[dict],
     ) -> list[AuditEvent]:
-        """
-        Append multiple events in deterministic sequential order.
-        Each event dict: {"event_type": str, "payload": dict, "evidence_ids": list[UUID]}
+        """Append multiple events sequentially in the exact order provided.
+
+        Each dictionary must include 'event_type', and optional 'payload' and 'evidence_ids'.
         """
         created = []
         for ev in events:
@@ -88,5 +94,6 @@ class EventRecorder:
                 evidence_ids=ev.get("evidence_ids"),
             )
             created.append(item)
-            self.db.flush()  # Ensures sequence numbers advance sequentially
+            # Flush changes to assign sequential sequence numbers properly
+            self.db.flush()
         return created

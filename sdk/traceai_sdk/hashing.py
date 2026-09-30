@@ -1,12 +1,15 @@
+"""Client-side cryptographic hashing functions matching backend rules."""
+
 import hashlib
 import json
 from typing import Any
 
 
 def canonical_json(data: Any) -> str:
-    """
-    Convert data into a deterministic JSON representation.
-    Ensures identical byte sequences across runtimes regardless of dictionary key order.
+    """Convert data into a standard JSON string.
+
+    Sorts dictionary keys and removes extra spaces so the output
+    is identical across different systems and programming languages.
     """
     return json.dumps(
         data,
@@ -18,7 +21,7 @@ def canonical_json(data: Any) -> str:
 
 
 def sha256(data: str) -> str:
-    """Return the SHA-256 hex digest of a string."""
+    """Return the SHA-256 hash string of the input text."""
     return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
 
@@ -29,9 +32,9 @@ def hash_event(
     payload: dict,
     previous_hash: str | None,
 ) -> str:
-    """
-    Generate the cryptographic hash for an audit event.
-    The previous event hash is included so that events form a tamper-evident hash chain.
+    """Generate a cryptographic hash for an audit event.
+
+    Includes the previous event's hash to form a tamper-evident audit chain.
     """
     material = {
         "event_type": event_type,

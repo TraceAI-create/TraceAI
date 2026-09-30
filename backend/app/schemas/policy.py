@@ -1,9 +1,13 @@
+"""Pydantic schemas for policy management and compliance checks."""
+
 import uuid
 from datetime import datetime
 from pydantic import BaseModel, Field
 
 
 class PolicyCreate(BaseModel):
+    """Payload to create or register a governance policy."""
+
     name: str = Field(min_length=1)
     version: str = Field(min_length=1)
     description: str | None = None
@@ -12,6 +16,8 @@ class PolicyCreate(BaseModel):
 
 
 class PolicyResponse(BaseModel):
+    """Full detail view of a governance policy."""
+
     id: uuid.UUID
     name: str
     version: str

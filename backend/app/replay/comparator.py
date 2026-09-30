@@ -1,3 +1,5 @@
+"""Comparison and diff engine for replayed decisions."""
+
 import difflib
 import json
 from typing import Any
@@ -6,10 +8,10 @@ from app.schemas.replay import ActionDiff, DiffSummary, ToolCallDiff
 
 
 class ExecutionComparator:
-    """
-    Algorithmic Comparison & Diff Engine.
-    Performs structural, lexical, and behavioral comparison between
-    original decision traces and replay runs.
+    """Compares original decision events with replayed events.
+
+    Checks actions, tool calls, model reasoning text, policies, and event counts
+    to produce a clear similarity score and difference summary.
     """
 
     def compare(
@@ -17,14 +19,15 @@ class ExecutionComparator:
         original_events: list[dict[str, Any]],
         replayed_events: list[dict[str, Any]],
     ) -> DiffSummary:
+        """Compare original events with replayed events and calculate similarity."""
         action_diff = self._compare_actions(original_events, replayed_events)
         tools_match, tool_details = self._compare_tools(original_events, replayed_events)
         reasoning_ratio, reasoning_diff = self._compare_reasoning(original_events, replayed_events)
         policy_diff = self._compare_policies(original_events, replayed_events)
         metrics_diff = self._compare_metrics(original_events, replayed_events)
 
-        # Calculate overall weighted similarity score
-        # Action weight: 0.50, Tools: 0.25, Reasoning: 0.15, Policy: 0.10
+        # Calculate overall similarity score based on weights:
+        # Action: 50%, Tools: 25%, Reasoning: 15%, Policy: 10%
         action_score = 1.0 if action_diff.match else 0.0
         tools_score = 1.0 if tools_match else 0.0
         policy_score = 1.0 if policy_diff.get("match", True) else 0.0
@@ -77,6 +80,7 @@ class ExecutionComparator:
         orig_events: list[dict],
         replay_events: list[dict],
     ) -> ActionDiff:
+        """Compare the final actions taken in both runs."""
         orig_act = self._find_first_event(orig_events, ["ACTION_TAKEN"])
         replay_act = self._find_first_event(replay_events, ["ACTION_TAKEN"])
 
@@ -100,6 +104,7 @@ class ExecutionComparator:
         orig_events: list[dict],
         replay_events: list[dict],
     ) -> tuple[bool, list[ToolCallDiff]]:
+        """Compare tool calls, input arguments, and results across both runs."""
         orig_tools = [e for e in orig_events if "TOOL_CALL" in e.get("event_type", "")]
         replay_tools = [e for e in replay_events if "TOOL_CALL" in e.get("event_type", "")]
 
@@ -149,6 +154,7 @@ class ExecutionComparator:
         orig_events: list[dict],
         replay_events: list[dict],
     ) -> tuple[float, list[str]]:
+        """Compare model reasoning text between runs and calculate similarity percentage."""
         orig_inference = self._find_first_event(orig_events, ["MODEL_INFERENCE", "LLM_INVOCATION_COMPLETED"])
         replay_inference = self._find_first_event(replay_events, ["MODEL_INFERENCE", "LLM_INVOCATION_COMPLETED"])
 
@@ -161,7 +167,7 @@ class ExecutionComparator:
         matcher = difflib.SequenceMatcher(None, orig_text, replay_text)
         ratio = matcher.ratio()
 
-        # Generate line-by-line diff
+        # Build line-by-line differences
         orig_lines = orig_text.splitlines()
         replay_lines = replay_text.splitlines()
         diff = list(difflib.unified_diff(orig_lines, replay_lines, fromfile="original", tofile="replay", lineterm=""))
@@ -173,6 +179,7 @@ class ExecutionComparator:
         orig_events: list[dict],
         replay_events: list[dict],
     ) -> dict[str, Any]:
+        """Compare policy evaluation outcomes between runs."""
         orig_pol = self._find_first_event(orig_events, ["POLICY_EVALUATION"])
         replay_pol = self._find_first_event(replay_events, ["POLICY_EVALUATION"])
 
@@ -196,6 +203,7 @@ class ExecutionComparator:
         orig_events: list[dict],
         replay_events: list[dict],
     ) -> dict[str, Any]:
+        """Calculate event count differences between runs."""
         return {
             "original_event_count": len(orig_events),
             "replayed_event_count": len(replay_events),
@@ -203,12 +211,14 @@ class ExecutionComparator:
         }
 
     def _find_first_event(self, events: list[dict], types: list[str]) -> dict | None:
+        """Find the first event in a list matching any of the specified types."""
         for e in events:
             if e.get("event_type") in types:
                 return e
         return None
 
     def _extract_reasoning_text(self, event: dict | None) -> str:
+        """Extract reasoning, rationale, or model response text from an event payload."""
         if not event:
             return ""
         payload = event.get("payload", {})
@@ -233,6 +243,7 @@ class ExecutionComparator:
         return json.dumps(payload, sort_keys=True)
 
     def _normalize_json(self, data: Any) -> str:
+        """Format an object as a sorted JSON string for exact comparison."""
         try:
             return json.dumps(data, sort_keys=True, default=str)
         except Exception:

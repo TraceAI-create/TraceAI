@@ -1,3 +1,5 @@
+"""TraceAI Python SDK for AI agent traceability and auditing."""
+
 from traceai_sdk.client import TraceAIClient
 from traceai_sdk.context import DecisionContext
 from traceai_sdk.exceptions import (

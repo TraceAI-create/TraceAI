@@ -1,3 +1,5 @@
+"""Sandboxed execution engine for replaying decisions."""
+
 import copy
 from typing import Any
 import uuid
@@ -11,10 +13,10 @@ from app.services.policy_engine import PolicyEngine
 
 
 class ReplayEngine:
-    """
-    Sandboxed Replay Engine.
-    Reconstructs past decision traces using recorded tool responses from the
-    Evidence Store to execute deterministic or 'what-if' simulations.
+    """Executes deterministic or what-if replay simulations of past decisions.
+
+    Uses recorded evidence snapshots to mock tool outputs without contacting
+    external services or causing side effects.
     """
 
     def __init__(self, db: Session):
@@ -27,11 +29,12 @@ class ReplayEngine:
         decision_id: uuid.UUID,
         request: ReplayRequest,
     ) -> tuple[ReplayRun, DiffSummary]:
+        """Replay a decision run, compare it against the original, and save results."""
         decision = self.db.get(Decision, decision_id)
         if not decision:
             raise ValueError(f"Decision {decision_id} not found")
 
-        # 1. Extract original events into structured list
+        # 1. Extract original events into a structured list
         original_events = []
         for ev in sorted(decision.events, key=lambda x: x.sequence_number):
             original_events.append({
@@ -46,7 +49,7 @@ class ReplayEngine:
         # 2. Extract recorded tool evidence for mocking
         tool_cache = self._build_tool_evidence_cache(decision)
 
-        # 3. Execute sandboxed replay
+        # 3. Execute sandboxed replay simulation
         replayed_events = self._execute_sandbox(
             decision=decision,
             original_events=original_events,
@@ -58,10 +61,10 @@ class ReplayEngine:
             simulated_reasoning=request.simulated_reasoning,
         )
 
-        # 4. Compare original vs replay
+        # 4. Compare original execution against replayed execution
         diff_summary = self.comparator.compare(original_events, replayed_events)
 
-        # 5. Persist ReplayRun record
+        # 5. Save the replay run record in the database
         replay_record = ReplayRun(
             decision_id=decision.id,
             status=diff_summary.status,
@@ -77,9 +80,7 @@ class ReplayEngine:
         return replay_record, diff_summary
 
     def _build_tool_evidence_cache(self, decision: Decision) -> dict[str, Any]:
-        """
-        Build a lookup map of recorded tool responses from linked evidence snapshots.
-        """
+        """Build a lookup map of recorded tool responses from linked evidence snapshots."""
         cache = {}
         for link in decision.evidence_links:
             ev = link.evidence
@@ -106,15 +107,13 @@ class ReplayEngine:
         simulated_action: dict[str, Any] | None = None,
         simulated_reasoning: str | None = None,
     ) -> list[dict[str, Any]]:
-        """
-        Reconstruct decision execution in an isolated sandbox for ANY agent domain/use-case.
-        """
+        """Reconstruct decision execution in an isolated sandbox environment."""
         replayed_events = []
         effective_inputs = dict(decision.input_data or {})
         if mode == "what_if" and override_inputs:
             effective_inputs.update(override_inputs)
 
-        # 1. Decision Initialized
+        # 1. Initialize the replayed decision
         replayed_events.append({
             "sequence_number": 1,
             "event_type": "DECISION_CREATED",
@@ -135,7 +134,7 @@ class ReplayEngine:
             if event_type in ("DECISION_CREATED", "DECISION_COMPLETED"):
                 continue
 
-            # A. Generic Tool Execution (Database, External API, Internal function, etc.)
+            # Handle tool executions by using cached mock results
             if event_type in ("TOOL_CALL_STARTED", "TOOL_CALL_COMPLETED"):
                 tool_name = orig_payload.get("tool_name", "unknown_tool")
                 mocked_result = orig_payload.get("result")
@@ -157,7 +156,7 @@ class ReplayEngine:
                 })
                 seq += 1
 
-            # B. Generic Policy Evaluations
+            # Re-evaluate policies against inputs
             elif event_type == "POLICY_EVALUATION":
                 pol_report = self.policy_engine.evaluate_decision(
                     decision_id=decision.id,
@@ -175,7 +174,7 @@ class ReplayEngine:
                 })
                 seq += 1
 
-            # C. Generic Model, Reasoning, Output, and Action Events (Domain Agnostic)
+            # Handle model inferences, reasoning, and actions taken
             elif event_type in (
                 "LLM_INVOCATION_STARTED",
                 "LLM_INVOCATION_COMPLETED",
@@ -208,7 +207,7 @@ class ReplayEngine:
                 })
                 seq += 1
 
-            # D. Generic Catch-All for Any Custom Agent Event
+            # Handle any other custom agent events
             else:
                 replayed_payload = copy.deepcopy(orig_payload)
                 if mode == "what_if" and override_inputs:
@@ -220,7 +219,7 @@ class ReplayEngine:
                 })
                 seq += 1
 
-        # Final completion event
+        # Record final decision completion event
         replayed_events.append({
             "sequence_number": seq,
             "event_type": "DECISION_COMPLETED",

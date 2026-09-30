@@ -1,3 +1,5 @@
+"""Audit report generator for compliance and verification."""
+
 from datetime import datetime, timezone
 import json
 from typing import Any
@@ -9,22 +11,24 @@ from app.services.decision_service import verify_decision_integrity
 
 
 class AuditReporter:
-    """
-    Compliance Audit Report Generator.
-    Compiles cryptographic proofs, event chains, evidence artifacts,
-    replay verification, and auditor reviews into comprehensive audit reports.
+    """Generates JSON and Markdown compliance audit reports for decisions.
+
+    Gathers cryptographic verification results, timeline events, evidence items,
+    replay simulations, and human reviewer notes into a clear summary report.
     """
 
     def __init__(self, db: Session):
         self.db = db
 
     def generate_json_report(self, decision_id: uuid.UUID) -> dict[str, Any]:
+        """Compile complete audit data for a decision into a dictionary."""
         decision = self.db.get(Decision, decision_id)
         if not decision:
             raise ValueError(f"Decision {decision_id} not found")
 
         integrity = verify_decision_integrity(self.db, decision_id)
 
+        # Build chronological list of audit events
         events_timeline = []
         for ev in sorted(decision.events, key=lambda x: x.sequence_number):
             events_timeline.append({
@@ -36,6 +40,7 @@ class AuditReporter:
                 "payload": ev.payload,
             })
 
+        # Build list of linked evidence items
         evidence_inventory = []
         for link in decision.evidence_links:
             ev = link.evidence
@@ -49,6 +54,7 @@ class AuditReporter:
                     "created_at": ev.created_at.isoformat(),
                 })
 
+        # Build list of human review actions
         reviews_log = []
         for rev in decision.review_actions:
             reviews_log.append({
@@ -59,6 +65,7 @@ class AuditReporter:
                 "timestamp": rev.created_at.isoformat(),
             })
 
+        # Build list of replay verification runs
         replays_summary = []
         for r in decision.replays:
             replays_summary.append({
@@ -93,6 +100,7 @@ class AuditReporter:
         }
 
     def generate_markdown_report(self, decision_id: uuid.UUID) -> str:
+        """Format the decision audit report into a readable Markdown document."""
         report = self.generate_json_report(decision_id)
         dec = report["decision"]
         integ = report["cryptographic_verification"]
@@ -134,7 +142,7 @@ class AuditReporter:
 
         md.append("## 4. Chronological Audit Timeline")
         md.append("| Seq | Event Type | Timestamp | Hash (SHA-256) | Details |")
-        md.append("| :--- | :--- | :--- | :--- | :--- |")
+        md.append("| :--- | :--- | :--- | :--- |")
         for ev in report["audit_events_timeline"]:
             summary_str = json.dumps(ev["payload"], default=str)
             if len(summary_str) > 60:

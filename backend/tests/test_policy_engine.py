@@ -1,3 +1,5 @@
+"""Tests for the governance policy engine and audit logging."""
+
 from fastapi.testclient import TestClient
 from app.main import app
 
@@ -5,6 +7,7 @@ client = TestClient(app)
 
 
 def test_policy_engine_evaluation_and_audit_event():
+    """Test policy evaluation rules for PII, limits, and blocked tools."""
     # 1. Register a governance policy with PII, Threshold, and Blocked Tools rules
     policy_res = client.post(
         "/api/v1/policies",
@@ -38,7 +41,7 @@ def test_policy_engine_evaluation_and_audit_event():
     assert policy_res.status_code == 201
     policy_id = policy_res.json()["id"]
 
-    # 2. Test Compliant Decision (Passes)
+    # 2. Test compliant decision that satisfies all rules
     clean_dec = client.post(
         "/api/v1/decisions",
         json={
@@ -62,7 +65,7 @@ def test_policy_engine_evaluation_and_audit_event():
     assert integrity["valid"] is True
     assert integrity["event_count"] == 2  # DECISION_CREATED + POLICY_EVALUATION
 
-    # 3. Test PII Violation (SSN present in target payload)
+    # 3. Test sensitive personal information violation (SSN in payload)
     pii_dec = client.post(
         "/api/v1/decisions",
         json={
@@ -85,7 +88,7 @@ def test_policy_engine_evaluation_and_audit_event():
     dec_detail = client.get(f"/api/v1/decisions/{pii_dec['id']}").json()
     assert dec_detail["status"] == "policy_violated"
 
-    # 4. Test Threshold Violation (amount 150000 > 100000)
+    # 4. Test threshold violation (requested amount exceeds limit)
     thresh_dec = client.post(
         "/api/v1/decisions",
         json={
@@ -103,7 +106,7 @@ def test_policy_engine_evaluation_and_audit_event():
     assert report["passed"] is False
     assert any(v["type"] == "threshold_violation" for v in report["violations"])
 
-    # 5. Test Blocked Tool Violation
+    # 5. Test blocked tool violation
     blocked_tool_dec = client.post(
         "/api/v1/decisions",
         json={

@@ -1,3 +1,5 @@
+"""HTTP client for communicating with the TraceAI Audit API."""
+
 from typing import Any
 from uuid import UUID
 import httpx
@@ -7,9 +9,7 @@ from traceai_sdk.models import AuditEventRecord, DecisionSession, EvidenceRef, I
 
 
 class TraceAIClient:
-    """
-    HTTP client for the TraceAI Audit API.
-    """
+    """Client for making HTTP requests to the TraceAI API."""
 
     def __init__(
         self,
@@ -37,6 +37,7 @@ class TraceAIClient:
             self._owns_client = True
 
     def close(self) -> None:
+        """Close the underlying HTTP connection pool if owned by this client."""
         if getattr(self, "_owns_client", True):
             self._client.close()
 
@@ -52,6 +53,7 @@ class TraceAIClient:
         agent_version: str,
         input_data: dict[str, Any] | None = None,
     ) -> DecisionSession:
+        """Start a new decision session in TraceAI."""
         payload = {
             "agent_id": agent_id,
             "agent_version": agent_version,
@@ -70,6 +72,7 @@ class TraceAIClient:
         payload: dict[str, Any] | None = None,
         evidence_ids: list[UUID | str] | None = None,
     ) -> AuditEventRecord:
+        """Add a single audit event to the decision's audit chain."""
         body = {
             "event_type": event_type,
             "payload": payload or {},
@@ -85,6 +88,7 @@ class TraceAIClient:
         decision_id: UUID | str,
         events: list[dict[str, Any]],
     ) -> list[AuditEventRecord]:
+        """Add a list of audit events in batch order to the decision's audit chain."""
         formatted_events = []
         for ev in events:
             formatted_events.append({
@@ -104,6 +108,7 @@ class TraceAIClient:
         content: Any,
         metadata: dict[str, Any] | None = None,
     ) -> EvidenceRef:
+        """Save evidence content in content-addressable storage."""
         body = {
             "type": type,
             "content": content,
@@ -120,6 +125,7 @@ class TraceAIClient:
         evidence_id: UUID | str,
         role: str = "context",
     ) -> None:
+        """Link an existing evidence record to a decision."""
         res = self._client.post(
             f"/api/v1/decisions/{decision_id}/evidence/{evidence_id}",
             params={"role": role},
@@ -128,6 +134,7 @@ class TraceAIClient:
             raise TraceAIAPIError(f"Failed to link evidence: {res.text}", status_code=res.status_code)
 
     def verify_integrity(self, decision_id: UUID | str) -> IntegrityCheckResult:
+        """Verify the cryptographic audit chain integrity for a decision."""
         res = self._client.get(f"/api/v1/decisions/{decision_id}/integrity")
         if res.status_code != 200:
             raise TraceAIAPIError(f"Failed to check integrity: {res.text}", status_code=res.status_code)
@@ -139,6 +146,7 @@ class TraceAIClient:
         target_payload: dict[str, Any] | None = None,
         policy_id: UUID | str | None = None,
     ) -> dict[str, Any]:
+        """Evaluate a decision payload against compliance and governance policies."""
         params = {}
         if policy_id:
             params["policy_id"] = str(policy_id)
@@ -158,6 +166,7 @@ class TraceAIClient:
         override_inputs: dict[str, Any] | None = None,
         mock_tools: bool = True,
     ) -> dict[str, Any]:
+        """Trigger a sandboxed replay run for a past decision."""
         payload = {
             "mode": mode,
             "override_inputs": override_inputs or {},
@@ -169,6 +178,7 @@ class TraceAIClient:
         return res.json()
 
     def list_replays(self, decision_id: UUID | str) -> list[dict[str, Any]]:
+        """List all replay executions completed for a decision."""
         res = self._client.get(f"/api/v1/decisions/{decision_id}/replays")
         if res.status_code != 200:
             raise TraceAIAPIError(f"Failed to list replays: {res.text}", status_code=res.status_code)
@@ -179,6 +189,7 @@ class TraceAIClient:
         decision_id: UUID | str,
         format: str = "json",
     ) -> dict[str, Any] | str:
+        """Download an audit report for a decision in JSON or Markdown format."""
         res = self._client.get(f"/api/v1/decisions/{decision_id}/audit-report", params={"format": format})
         if res.status_code != 200:
             raise TraceAIAPIError(f"Failed to fetch audit report: {res.text}", status_code=res.status_code)

@@ -1,3 +1,10 @@
+"""Policy evaluation engine for compliance and safety rules.
+
+Evaluates decision inputs and tool arguments against active policies,
+checks for personal data (PII), numeric limits, and blocked tools,
+and logs evaluation results directly into the decision's audit chain.
+"""
+
 import re
 from typing import Any
 from uuid import UUID
@@ -7,7 +14,7 @@ from app.db.models import Decision, Policy
 from app.services.event_recorder import EventRecorder
 
 
-# Common PII Regex Patterns
+# Regular expressions for detecting sensitive personal information
 PII_PATTERNS = {
     "ssn": re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),
     "credit_card": re.compile(r"\b(?:\d{4}[ -]?){3}\d{4}\b"),
@@ -16,11 +23,7 @@ PII_PATTERNS = {
 
 
 class PolicyEngine:
-    """
-    Governance and Compliance Policy Engine.
-    Evaluates decisions, inputs, and tool events against versioned policies
-    and records immutable POLICY_EVALUATION audit events into the hash chain.
-    """
+    """Evaluates agent decisions and payloads against defined rules."""
 
     def __init__(self, db: Session):
         self.db = db
@@ -32,24 +35,26 @@ class PolicyEngine:
         policy_id: UUID | None = None,
         record_audit_event: bool = True,
     ) -> dict[str, Any]:
-        """
-        Evaluate a decision against active policies or a specific policy.
+        """Evaluate a decision against all active policies or a single policy.
+
+        Checks decision input and extra payloads against rules, and optionally records
+        a POLICY_EVALUATION event in the decision's audit chain.
         """
         decision = self.db.get(Decision, decision_id)
         if not decision:
             return {"valid": False, "error": "Decision not found"}
 
-        # Combine decision input with target payload or events
+        # Combine decision input with the target payload to evaluate
         data_to_check = dict(decision.input_data)
         if target_payload:
             data_to_check.update(target_payload)
 
-        # Fetch policies
+        # Retrieve relevant policies
         if policy_id:
             policy = self.db.get(Policy, policy_id)
             policies = [policy] if policy else []
         else:
-            # Query all active policies
+            # Query all registered policies
             policies = self.db.query(Policy).all()
 
         if not policies:
@@ -63,6 +68,7 @@ class PolicyEngine:
         all_violations = []
         evaluated_names = []
 
+        # Evaluate rules for each policy
         for p in policies:
             evaluated_names.append(f"{p.name} (v{p.version})")
             violations = self._evaluate_rules(p.rules, data_to_check)
@@ -74,7 +80,7 @@ class PolicyEngine:
 
         passed = len(all_violations) == 0
 
-        # Record evaluation result into the decision's immutable audit chain
+        # Record the evaluation result in the decision's audit chain if requested
         event_record = None
         if record_audit_event:
             recorder = EventRecorder(self.db)
@@ -89,6 +95,7 @@ class PolicyEngine:
                 },
             )
 
+            # If policies were violated, mark the decision status
             if not passed:
                 decision.status = "policy_violated"
 
@@ -104,6 +111,7 @@ class PolicyEngine:
         }
 
     def _evaluate_rules(self, rules_spec: dict[str, Any], data: dict[str, Any]) -> list[dict[str, Any]]:
+        """Evaluate a set of rules against the provided data dictionary."""
         violations = []
         rules = rules_spec.get("rules", [])
         if isinstance(rules_spec, list):
@@ -129,6 +137,7 @@ class PolicyEngine:
         return violations
 
     def _check_pii(self, rule: dict, data: dict) -> list[dict]:
+        """Scan text fields for sensitive personal data like SSNs or credit card numbers."""
         violations = []
         patterns_to_check = rule.get("patterns", ["ssn", "credit_card"])
 
@@ -150,6 +159,7 @@ class PolicyEngine:
         return violations
 
     def _check_threshold(self, rule: dict, data: dict) -> dict | None:
+        """Verify that a numeric field satisfies a threshold condition (e.g. <= value)."""
         field = rule.get("field")
         op = rule.get("operator", "<=")
         limit = rule.get("value")
@@ -188,6 +198,7 @@ class PolicyEngine:
         return None
 
     def _check_blocked_tools(self, rule: dict, data: dict) -> dict | None:
+        """Check whether the agent called a tool that is prohibited by policy."""
         blocked = rule.get("tools", [])
         tool_name = data.get("tool_name") or data.get("tool")
 
@@ -201,6 +212,7 @@ class PolicyEngine:
         return None
 
     def _flatten_strings(self, obj: Any, prefix: str = "") -> list[tuple[str, str]]:
+        """Extract all string values and their key paths from nested structures."""
         items = []
         if isinstance(obj, dict):
             for k, v in obj.items():

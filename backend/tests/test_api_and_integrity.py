@@ -1,3 +1,5 @@
+"""Tests for decision lifecycle and cryptographic tamper detection."""
+
 import uuid
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -10,6 +12,7 @@ client = TestClient(app)
 
 
 def test_decision_lifecycle_and_tamper_detection():
+    """Test creating decisions, logging events, linking evidence, and detecting tampering."""
     # 1. Register a new decision
     res = client.post(
         "/api/v1/decisions",
@@ -89,8 +92,7 @@ def test_decision_lifecycle_and_tamper_detection():
     assert res.status_code == 200
     assert res.json()["valid"] is True
 
-    # 8. Deliberately tamper with the second event's payload in the DB
-    # Obtain a DB session using the app's get_db dependency
+    # 8. Tamper with the second event payload in the database to test detection
     db_gen = get_db()
     db: Session = next(db_gen)
     try:
@@ -100,13 +102,13 @@ def test_decision_lifecycle_and_tamper_detection():
             .first()
         )
         assert second_event is not None
-        # Tamper with the recorded payload
+        # Modify the recorded payload
         second_event.payload = {"tool_name": "fetch_user_profile", "user_id": "TAMPERED_HACKED_USER"}
         db.commit()
     finally:
         db.close()
 
-    # 9. Verify cryptographic integrity now FAILS and flags the exact corrupted event
+    # 9. Verify cryptographic integrity now fails and identifies the tampered event
     res = client.get(f"/api/v1/decisions/{decision_id}/integrity")
     assert res.status_code == 200
     corrupted_integrity = res.json()

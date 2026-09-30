@@ -1,3 +1,5 @@
+"""Tests for decision replay, diff engine, and audit report generation."""
+
 from fastapi.testclient import TestClient
 from app.main import app
 from traceai_sdk.client import TraceAIClient
@@ -6,6 +8,7 @@ client = TestClient(app)
 
 
 def test_deterministic_replay_and_diff():
+    """Test deterministic replay matching and what-if simulation divergence."""
     # 1. Setup a complete decision trace
     dec_res = client.post(
         "/api/v1/decisions",
@@ -47,7 +50,7 @@ def test_deterministic_replay_and_diff():
         },
     )
 
-    # Record reasoning & action
+    # Record reasoning and action
     client.post(
         f"/api/v1/decisions/{decision_id}/events",
         json={
@@ -72,7 +75,7 @@ def test_deterministic_replay_and_diff():
         },
     )
 
-    # 3. Trigger Deterministic Replay
+    # 3. Trigger deterministic replay
     replay_res = client.post(
         f"/api/v1/decisions/{decision_id}/replay",
         json={"mode": "deterministic", "mock_tools": True},
@@ -85,7 +88,7 @@ def test_deterministic_replay_and_diff():
     assert replay_data["diff_summary"]["is_match"] is True
     assert replay_data["diff_summary"]["action_diff"]["match"] is True
 
-    # 4. Trigger What-If Simulation with Divergent Amount
+    # 4. Trigger what-if simulation with divergent loan amount
     what_if_res = client.post(
         f"/api/v1/decisions/{decision_id}/replay",
         json={
@@ -108,7 +111,7 @@ def test_deterministic_replay_and_diff():
     assert what_if_data["diff_summary"]["action_diff"]["original"]["action"] == "APPROVE_LOAN"
     assert what_if_data["diff_summary"]["action_diff"]["replayed"]["action"] == "REJECT_LOAN"
 
-    # 5. List Replays
+    # 5. List replays
     list_res = client.get(f"/api/v1/decisions/{decision_id}/replays")
     assert list_res.status_code == 200
     replays = list_res.json()
@@ -116,6 +119,7 @@ def test_deterministic_replay_and_diff():
 
 
 def test_audit_report_generation():
+    """Test generating JSON and Markdown compliance audit reports."""
     # Setup decision
     dec_res = client.post(
         "/api/v1/decisions",
@@ -137,13 +141,13 @@ def test_audit_report_generation():
         },
     )
 
-    # Run a deterministic replay so the report has replay verification
+    # Run a deterministic replay so the report includes replay verification
     client.post(
         f"/api/v1/decisions/{decision_id}/replay",
         json={"mode": "deterministic"},
     )
 
-    # Test JSON Audit Report
+    # Test JSON audit report
     json_report_res = client.get(f"/api/v1/decisions/{decision_id}/audit-report?format=json")
     assert json_report_res.status_code == 200
     report_json = json_report_res.json()
@@ -153,7 +157,7 @@ def test_audit_report_generation():
     assert len(report_json["human_reviews"]) == 1
     assert len(report_json["replay_verification"]) == 1
 
-    # Test Markdown Audit Report
+    # Test Markdown audit report
     md_report_res = client.get(f"/api/v1/decisions/{decision_id}/audit-report?format=markdown")
     assert md_report_res.status_code == 200
     assert md_report_res.headers["content-type"].startswith("text/markdown")
@@ -166,6 +170,7 @@ def test_audit_report_generation():
 
 
 def test_sdk_replay_client_methods():
+    """Test triggering replays and fetching audit reports via the SDK client."""
     sdk_client = TraceAIClient(http_client=client)
 
     # Create decision

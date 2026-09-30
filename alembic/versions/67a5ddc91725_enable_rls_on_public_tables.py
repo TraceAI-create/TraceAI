@@ -1,17 +1,17 @@
-"""enable_rls_on_public_tables
+"""Enable Row Level Security (RLS) on public tables.
 
 Revision ID: 67a5ddc91725
 Revises: 10b8a6fdf10d
 Create Date: 2026-09-30 11:21:26.269672
-
 """
+
 from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
 
 
-# revision identifiers, used by Alembic.
+# Revision identifiers used by Alembic
 revision: str = '67a5ddc91725'
 down_revision: Union[str, Sequence[str], None] = '10b8a6fdf10d'
 branch_labels: Union[str, Sequence[str], None] = None

@@ -1,3 +1,5 @@
+"""Service for recording and listing human auditor reviews."""
+
 import uuid
 from sqlalchemy.orm import Session
 
@@ -11,6 +13,7 @@ def create_review(
     decision_id: uuid.UUID,
     data: ReviewCreate,
 ) -> ReviewAction | None:
+    """Record a human reviewer's action and add an audit event to the decision chain."""
     decision = db.get(Decision, decision_id)
     if not decision:
         return None
@@ -23,7 +26,7 @@ def create_review(
     )
     db.add(review)
 
-    # Record the human review in the decision's immutable audit chain
+    # Record the human review action in the decision's tamper-evident audit chain
     recorder = EventRecorder(db)
     recorder.record(
         decision,
@@ -46,6 +49,7 @@ def list_reviews_for_decision(
     db: Session,
     decision_id: uuid.UUID,
 ) -> list[ReviewAction]:
+    """List all review actions recorded for a given decision, ordered newest first."""
     return (
         db.query(ReviewAction)
         .filter(ReviewAction.decision_id == decision_id)

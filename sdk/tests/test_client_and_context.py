@@ -1,3 +1,5 @@
+"""Tests for the TraceAI SDK client and DecisionContext manager."""
+
 from fastapi.testclient import TestClient
 import pytest
 from app.main import app
@@ -7,10 +9,12 @@ from traceai_sdk.context import DecisionContext
 
 @pytest.fixture
 def test_client():
+    """Fixture providing a FastAPI TestClient instance."""
     return TestClient(app)
 
 
 def test_client_direct_lifecycle(test_client):
+    """Test full manual lifecycle using TraceAIClient directly."""
     client = TraceAIClient(http_client=test_client)
 
     # 1. Create decision
@@ -50,6 +54,7 @@ def test_client_direct_lifecycle(test_client):
 
 
 def test_context_manager_immediate_mode(test_client):
+    """Test DecisionContext in immediate flush mode."""
     with DecisionContext(
         agent_id="claim_agent",
         agent_version="1.0.0",
@@ -74,6 +79,7 @@ def test_context_manager_immediate_mode(test_client):
 
 
 def test_context_manager_batch_mode(test_client):
+    """Test DecisionContext in batch flush mode."""
     with DecisionContext(
         agent_id="batch_agent",
         agent_version="1.0.0",
@@ -95,6 +101,7 @@ def test_context_manager_batch_mode(test_client):
 
 
 def test_context_manager_exception_records_failure(test_client):
+    """Test that agent exceptions record a DECISION_FAILED event and preserve chain integrity."""
     with pytest.raises(ValueError, match="Simulated agent failure"):
         with DecisionContext(
             agent_id="failing_agent",
@@ -104,7 +111,7 @@ def test_context_manager_exception_records_failure(test_client):
             ctx.record_event("STARTED", {"step": 1})
             raise ValueError("Simulated agent failure")
 
-    # Audit chain should STILL be cryptographically valid, with DECISION_FAILED recorded!
+    # The audit chain must remain cryptographically valid with DECISION_FAILED recorded
     client = TraceAIClient(http_client=test_client)
     integrity = client.verify_integrity(ctx.decision_id)
     assert integrity.valid is True

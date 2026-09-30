@@ -1,10 +1,13 @@
+"""Custom exceptions for the TraceAI SDK."""
+
+
 class TraceAIError(Exception):
-    """Base exception for TraceAI SDK errors."""
+    """Base exception for all TraceAI SDK errors."""
     pass
 
 
 class TraceAIAPIError(TraceAIError):
-    """Raised when an API request to TraceAI backend fails."""
+    """Raised when an API request to the TraceAI backend fails."""
 
     def __init__(self, message: str, status_code: int | None = None, response_body: str | None = None):
         super().__init__(message)
@@ -13,5 +16,5 @@ class TraceAIAPIError(TraceAIError):
 
 
 class TraceAIIntegrityError(TraceAIError):
-    """Raised when client-side and server-side cryptographic audit chains do not match."""
+    """Raised when the cryptographic audit chain verification fails."""
     pass

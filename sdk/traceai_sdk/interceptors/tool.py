@@ -1,3 +1,5 @@
+"""Decorator for instrumenting agent tools and functions."""
+
 import asyncio
 import functools
 import inspect
@@ -15,12 +17,12 @@ def instrument_tool(
     snapshot: bool = False,
     role: str = "tool_output",
 ):
-    """
-    Decorator to instrument any tool, function, or API call.
-    Automatically captures arguments, latency, return values, errors,
-    and creates content-addressable evidence snapshots for large outputs.
+    """Decorator to automatically trace a function, tool, or API call.
 
-    Usage:
+    Measures execution time, captures inputs and return values, logs errors,
+    and saves large results to the evidence store.
+
+    Example:
         @instrument_tool(name="fetch_credit_score", snapshot=True)
         def get_credit_score(user_id: str, bureau: str = "Experian"):
             ...
@@ -81,31 +83,35 @@ def instrument_tool(
     return decorator
 
 
-# Context registry so decorated tools can automatically discover the enclosing DecisionContext
+# Stack tracking active contexts so decorated functions know which session to record to
 _active_context_stack: list[DecisionContext] = []
 
 
 def _get_active_context() -> DecisionContext | None:
+    """Return the current active decision context from the top of the stack."""
     return _active_context_stack[-1] if _active_context_stack else None
 
 
 def set_active_context(ctx: DecisionContext) -> None:
+    """Push a decision context onto the active context stack."""
     _active_context_stack.append(ctx)
 
 
 def clear_active_context(ctx: DecisionContext) -> None:
+    """Remove a decision context from the active context stack."""
     if ctx in _active_context_stack:
         _active_context_stack.remove(ctx)
 
 
 def _extract_args(func: Callable, args: tuple, kwargs: dict) -> dict[str, Any]:
+    """Map function arguments to parameter names, skipping self and cls."""
     try:
         sig = inspect.signature(func)
         bound = sig.bind_partial(*args, **kwargs)
         bound.apply_defaults()
         clean = {}
         for k, v in bound.arguments.items():
-            # Don't capture self or cls
+            # Skip self and cls parameters
             if k in ("self", "cls"):
                 continue
             if isinstance(v, (str, int, float, bool, list, dict, type(None))):
@@ -127,6 +133,7 @@ def _record_completion(
     snapshot_threshold_bytes: int,
     role: str,
 ) -> None:
+    """Record a successful tool execution event."""
     if ctx is None:
         return
 
@@ -135,7 +142,7 @@ def _record_completion(
     is_large = len(result_str.encode("utf-8")) > snapshot_threshold_bytes
 
     if snapshot or is_large:
-        # Offload output to Evidence Store
+        # Save large output to the evidence store
         ev = ctx.record_evidence(
             evidence_type=f"tool_output_{tool_name}",
             content=result if isinstance(result, (dict, list, str)) else result_str,
@@ -167,6 +174,7 @@ def _record_failure(
     exc: Exception,
     latency_ms: float,
 ) -> None:
+    """Record a failed tool execution event."""
     if ctx is None:
         return
 

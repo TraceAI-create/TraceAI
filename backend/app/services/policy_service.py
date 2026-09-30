@@ -1,3 +1,5 @@
+"""Service functions for policy registration and querying."""
+
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
@@ -11,6 +13,7 @@ def create_policy(
     db: Session,
     data: PolicyCreate,
 ) -> Policy:
+    """Create a new policy record and compute the SHA-256 hash of its rules."""
     rules_canonical = canonical_json(data.rules)
     content_hash = sha256(rules_canonical)
 
@@ -33,6 +36,7 @@ def get_policy(
     db: Session,
     policy_id: uuid.UUID,
 ) -> Policy | None:
+    """Find a policy by its unique ID."""
     return db.get(Policy, policy_id)
 
 
@@ -40,6 +44,7 @@ def list_policies(
     db: Session,
     active_only: bool = True,
 ) -> list[Policy]:
+    """List policies, optionally filtering to only currently active ones."""
     query = db.query(Policy)
     if active_only:
         now = datetime.now(timezone.utc)

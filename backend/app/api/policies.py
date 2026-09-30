@@ -1,3 +1,5 @@
+"""API endpoints for registering governance policies and evaluating decisions."""
+
 from typing import Any
 import uuid
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
@@ -23,6 +25,7 @@ def register_policy(
     data: PolicyCreate,
     db: Session = Depends(get_db),
 ):
+    """Register a new versioned governance policy."""
     return create_policy(db, data)
 
 
@@ -34,6 +37,7 @@ def get_policies(
     active_only: bool = Query(True),
     db: Session = Depends(get_db),
 ):
+    """List policies, optionally filtering to only currently active ones."""
     return list_policies(db, active_only=active_only)
 
 
@@ -45,6 +49,7 @@ def get_policy_detail(
     policy_id: uuid.UUID,
     db: Session = Depends(get_db),
 ):
+    """Get the details of a specific policy by its ID."""
     policy = get_policy(db, policy_id)
     if not policy:
         raise HTTPException(status_code=404, detail="Policy not found")
@@ -61,6 +66,10 @@ def evaluate_decision_policies(
     policy_id: uuid.UUID | None = Query(None),
     db: Session = Depends(get_db),
 ):
+    """Evaluate a decision against active policies or a specific policy.
+
+    Records the evaluation result into the decision's tamper-evident audit chain.
+    """
     engine = PolicyEngine(db)
     result = engine.evaluate_decision(
         decision_id=decision_id,

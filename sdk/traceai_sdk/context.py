@@ -1,3 +1,5 @@
+"""Decision context manager for instrumenting AI agents."""
+
 from datetime import datetime, timezone
 from typing import Any, Literal
 from uuid import UUID
@@ -10,10 +12,9 @@ from traceai_sdk.models import AuditEventRecord, DecisionSession, EvidenceRef, I
 
 
 class DecisionContext:
-    """
-    Context manager for instrumenting an AI Agent execution.
+    """Context manager for tracking an AI agent's execution.
 
-    Usage:
+    Example:
         with DecisionContext(agent_id="my_agent", agent_version="1.0.0") as ctx:
             ctx.record_event("PLAN", {"steps": [...]})
             ev = ctx.record_evidence("document", {"file": "content"})
@@ -53,11 +54,13 @@ class DecisionContext:
 
     @property
     def decision_id(self) -> UUID:
+        """Return the unique ID of the active decision session."""
         if self.session is None:
             raise RuntimeError("DecisionContext has not been entered yet.")
         return self.session.id
 
     def __enter__(self) -> "DecisionContext":
+        """Create the decision session and register this context as active."""
         self.session = self._client.create_decision(
             agent_id=self.agent_id,
             agent_version=self.agent_version,
@@ -75,8 +78,10 @@ class DecisionContext:
         payload: dict[str, Any] | None = None,
         evidence_ids: list[UUID | str] | None = None,
     ) -> AuditEventRecord | None:
-        """
-        Record an observable agent event into the audit hash chain.
+        """Record an agent event into the audit chain.
+
+        In 'immediate' mode, sends the event to the server right away.
+        In 'batch' mode, stores the event locally until flush() or exit.
         """
         if self.session is None:
             raise RuntimeError("DecisionContext is not active.")
@@ -95,7 +100,7 @@ class DecisionContext:
             self.last_hash = event.event_hash
             return event
         else:
-            # Batch mode: buffer locally
+            # Batch mode: buffer the event locally and calculate hash
             self.current_sequence += 1
             now_iso = datetime.now(timezone.utc).isoformat()
             client_hash = hash_event(
@@ -120,10 +125,7 @@ class DecisionContext:
         auto_link: bool = True,
         role: str = "retrieved",
     ) -> EvidenceRef:
-        """
-        Store a snapshot or document in content-addressable storage
-        and link it to the current decision.
-        """
+        """Store evidence in content-addressable storage and link it to this decision."""
         if self.session is None:
             raise RuntimeError("DecisionContext is not active.")
 
@@ -147,10 +149,7 @@ class DecisionContext:
         target_payload: dict[str, Any] | None = None,
         policy_id: UUID | str | None = None,
     ) -> dict[str, Any]:
-        """
-        Evaluate current decision context against active policies or a specific policy.
-        Results and any violations are recorded into the cryptographic audit chain.
-        """
+        """Evaluate the decision against governance policies and record the result."""
         if self.session is None:
             raise RuntimeError("DecisionContext is not active.")
         return self._client.evaluate_policies(
@@ -160,7 +159,7 @@ class DecisionContext:
         )
 
     def flush(self) -> list[AuditEventRecord]:
-        """Flush any buffered events to the backend."""
+        """Send all locally buffered events to the backend server."""
         if not self._buffer or self.session is None:
             return []
 
@@ -175,6 +174,7 @@ class DecisionContext:
         return events
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Finalize the decision, flush events, and verify chain integrity."""
         try:
             if exc_type is None:
                 self.record_event(

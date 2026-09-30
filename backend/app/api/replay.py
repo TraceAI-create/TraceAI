@@ -1,3 +1,5 @@
+"""API endpoints for replaying decisions, listing replays, and generating audit reports."""
+
 from typing import Literal
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -25,6 +27,7 @@ def trigger_replay(
     request: ReplayRequest = ReplayRequest(),
     db: Session = Depends(get_db),
 ):
+    """Run a sandboxed replay of a past decision and compute differences from the original run."""
     decision = db.get(Decision, decision_id)
     if not decision:
         raise HTTPException(status_code=404, detail="Decision not found")
@@ -54,6 +57,7 @@ def list_replays(
     decision_id: uuid.UUID,
     db: Session = Depends(get_db),
 ):
+    """List all replay executions completed for a specific decision."""
     decision = db.get(Decision, decision_id)
     if not decision:
         raise HTTPException(status_code=404, detail="Decision not found")
@@ -86,6 +90,7 @@ def get_replay_detail(
     replay_id: uuid.UUID,
     db: Session = Depends(get_db),
 ):
+    """Get the full details and diff summary of a specific replay run."""
     replay = db.get(ReplayRun, replay_id)
     if not replay or replay.decision_id != decision_id:
         raise HTTPException(status_code=404, detail="Replay record not found")
@@ -110,6 +115,7 @@ def download_audit_report(
     format: Literal["json", "markdown"] = Query("json"),
     db: Session = Depends(get_db),
 ):
+    """Generate and return a compliance audit report in JSON or Markdown format."""
     decision = db.get(Decision, decision_id)
     if not decision:
         raise HTTPException(status_code=404, detail="Decision not found")
