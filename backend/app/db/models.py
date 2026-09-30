@@ -65,6 +65,12 @@ class Decision(Base):
         order_by="ReviewAction.created_at",
     )
 
+    replays: Mapped[list["ReplayRun"]] = relationship(
+        back_populates="decision",
+        cascade="all, delete-orphan",
+        order_by="ReplayRun.created_at.desc()",
+    )
+
 
 class AuditEvent(Base):
     __tablename__ = "audit_events"
@@ -290,4 +296,57 @@ class ReviewAction(Base):
 
     decision: Mapped["Decision"] = relationship(
         back_populates="review_actions",
+    )
+
+
+class ReplayRun(Base):
+    __tablename__ = "replay_runs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+
+    decision_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("decisions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default="completed",
+    )
+
+    replay_mode: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default="deterministic",
+    )
+
+    similarity_score: Mapped[float] = mapped_column(
+        nullable=False,
+        default=1.0,
+    )
+
+    diff_summary: Mapped[dict] = mapped_column(
+        JSON,
+        nullable=False,
+        default=dict,
+    )
+
+    replayed_events: Mapped[list] = mapped_column(
+        JSON,
+        nullable=False,
+        default=list,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    decision: Mapped["Decision"] = relationship(
+        back_populates="replays",
     )

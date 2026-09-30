@@ -1,0 +1,73 @@
+from datetime import datetime
+from typing import Any, Literal
+from uuid import UUID
+from pydantic import BaseModel, Field
+
+
+class ReplayRequest(BaseModel):
+    mode: Literal["deterministic", "what_if"] = "deterministic"
+    override_inputs: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Optional input overrides for 'what-if' simulation",
+    )
+    simulated_action: dict[str, Any] | None = Field(
+        default=None,
+        description="Optional simulated action outcome when running what-if counterfactuals",
+    )
+    simulated_reasoning: str | None = Field(
+        default=None,
+        description="Optional simulated reasoning text for what-if counterfactuals",
+    )
+    mock_tools: bool = Field(
+        default=True,
+        description="When True, injects recorded tool responses from Evidence Store to guarantee zero external side-effects",
+    )
+
+
+class ActionDiff(BaseModel):
+    original: Any = None
+    replayed: Any = None
+    match: bool = True
+
+
+class ToolCallDiff(BaseModel):
+    tool_name: str
+    original_args: dict[str, Any] = Field(default_factory=dict)
+    replayed_args: dict[str, Any] = Field(default_factory=dict)
+    args_match: bool = True
+    result_match: bool = True
+
+
+class DiffSummary(BaseModel):
+    is_match: bool
+    status: Literal["matched", "diverged", "failed"]
+    overall_similarity: float
+    action_diff: ActionDiff
+    tools_match: bool
+    tools_executed_count: int
+    tool_details: list[ToolCallDiff] = []
+    reasoning_similarity_ratio: float = 1.0
+    reasoning_diff: list[str] = []
+    policy_diff: dict[str, Any] = Field(default_factory=dict)
+    metrics_diff: dict[str, Any] = Field(default_factory=dict)
+    summary: str
+
+
+class ReplayResponse(BaseModel):
+    id: UUID
+    decision_id: UUID
+    status: str
+    replay_mode: str
+    similarity_score: float
+    diff_summary: dict[str, Any]
+    replayed_events: list[dict[str, Any]] = []
+    created_at: datetime
+
+
+class ReplaySummaryItem(BaseModel):
+    id: UUID
+    decision_id: UUID
+    status: str
+    replay_mode: str
+    similarity_score: float
+    created_at: datetime

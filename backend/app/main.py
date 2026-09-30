@@ -4,11 +4,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.decisions import router as decisions_router
 from app.api.evidence import router as evidence_router
 from app.api.policies import router as policies_router
+from app.api.replay import router as replay_router
 
 app = FastAPI(
     title="TraceAI",
     description="AI Decision Traceability and Audit System: Capture -> Store -> Replay -> Review -> Trust",
-    version="0.2.0",
+    version="0.3.0",
 )
 
 # Enable CORS for local frontend development (e.g. Vite on localhost:5173)
@@ -23,6 +24,7 @@ app.add_middleware(
 app.include_router(decisions_router)
 app.include_router(evidence_router)
 app.include_router(policies_router)
+app.include_router(replay_router)
 
 
 @app.get("/")

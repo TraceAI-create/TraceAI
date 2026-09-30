@@ -150,3 +150,38 @@ class TraceAIClient:
         if res.status_code != 200:
             raise TraceAIAPIError(f"Failed to evaluate policies: {res.text}", status_code=res.status_code)
         return res.json()
+
+    def trigger_replay(
+        self,
+        decision_id: UUID | str,
+        mode: str = "deterministic",
+        override_inputs: dict[str, Any] | None = None,
+        mock_tools: bool = True,
+    ) -> dict[str, Any]:
+        payload = {
+            "mode": mode,
+            "override_inputs": override_inputs or {},
+            "mock_tools": mock_tools,
+        }
+        res = self._client.post(f"/api/v1/decisions/{decision_id}/replay", json=payload)
+        if res.status_code != 200:
+            raise TraceAIAPIError(f"Failed to trigger replay: {res.text}", status_code=res.status_code)
+        return res.json()
+
+    def list_replays(self, decision_id: UUID | str) -> list[dict[str, Any]]:
+        res = self._client.get(f"/api/v1/decisions/{decision_id}/replays")
+        if res.status_code != 200:
+            raise TraceAIAPIError(f"Failed to list replays: {res.text}", status_code=res.status_code)
+        return res.json()
+
+    def get_audit_report(
+        self,
+        decision_id: UUID | str,
+        format: str = "json",
+    ) -> dict[str, Any] | str:
+        res = self._client.get(f"/api/v1/decisions/{decision_id}/audit-report", params={"format": format})
+        if res.status_code != 200:
+            raise TraceAIAPIError(f"Failed to fetch audit report: {res.text}", status_code=res.status_code)
+        if format == "markdown":
+            return res.text
+        return res.json()
