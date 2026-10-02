@@ -1,12 +1,288 @@
-import { Layers3 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, ChevronRight, Clock3, LoaderCircle, Search, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
-import PlaceholderPanel from '../components/PlaceholderPanel';
+import { getDecisions } from '../services/decisionService';
+import type { Decision } from '../types/decision';
+
+type StatusFilter = 'all' | 'created' | 'reviewed' | 'rejected' | 'challenged' | 'other';
+
+const statusFilters: { label: string; value: StatusFilter }[] = [
+  { label: 'All statuses', value: 'all' },
+  { label: 'Created', value: 'created' },
+  { label: 'Reviewed', value: 'reviewed' },
+  { label: 'Rejected', value: 'rejected' },
+  { label: 'Challenged', value: 'challenged' },
+  { label: 'Other', value: 'other' },
+];
+
+function statusGroup(status: string): Exclude<StatusFilter, 'all'> {
+  const normalized = status.toLowerCase();
+  if (normalized === 'created') return 'created';
+  if (normalized.startsWith('reviewed')) return 'reviewed';
+  if (normalized === 'rejected' || normalized.endsWith('_rejected')) return 'rejected';
+  if (normalized === 'challenged' || normalized.endsWith('_challenged')) return 'challenged';
+  return 'other';
+}
+
+function statusLabel(status: string): string {
+  return status
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function statusClasses(status: string): string {
+  switch (statusGroup(status)) {
+    case 'created':
+      return 'border-sky-400/20 bg-sky-400/[0.08] text-sky-300';
+    case 'reviewed':
+      return 'border-emerald-400/20 bg-emerald-400/[0.08] text-emerald-300';
+    case 'rejected':
+      return 'border-rose-400/20 bg-rose-400/[0.08] text-rose-300';
+    case 'challenged':
+      return 'border-amber-400/20 bg-amber-400/[0.08] text-amber-300';
+    default:
+      return 'border-slate-500/25 bg-slate-500/[0.08] text-slate-300';
+  }
+}
+
+function formatCreatedAt(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Invalid date';
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <span className={`inline-flex whitespace-nowrap border px-2 py-1 text-[10px] font-medium leading-none ${statusClasses(status)}`}>
+      {statusLabel(status)}
+    </span>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div role="status" className="flex items-center gap-3 border border-line bg-panel px-5 py-8 text-sm text-slate-400">
+      <LoaderCircle size={17} className="animate-spin text-accent" />
+      Loading development decision records…
+    </div>
+  );
+}
+
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div role="alert" className="flex flex-col gap-3 border border-rose-400/20 bg-rose-400/[0.04] px-5 py-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-start gap-3">
+        <AlertTriangle size={17} className="mt-0.5 shrink-0 text-rose-300" />
+        <div>
+          <h2 className="text-sm font-medium text-rose-200">Could not load decisions</h2>
+          <p className="mt-1 text-xs text-slate-400">{message}</p>
+        </div>
+      </div>
+      <button type="button" onClick={onRetry} className="w-fit border border-line px-3 py-2 text-xs text-slate-300 hover:border-slate-600 hover:text-white">
+        Try again
+      </button>
+    </div>
+  );
+}
+
+function EmptyState({ hasFilters }: { hasFilters: boolean }) {
+  return (
+    <div className="border border-line bg-panel px-5 py-12 text-center">
+      <Search size={19} className="mx-auto text-slate-500" />
+      <h2 className="mt-3 text-sm font-medium text-slate-200">No decisions found</h2>
+      <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-muted">
+        {hasFilters
+          ? 'No records match this search and status filter. Try changing or clearing your filters.'
+          : 'There are no decision records to display.'}
+      </p>
+    </div>
+  );
+}
 
 export default function DecisionsPage() {
+  const navigate = useNavigate();
+  const [decisions, setDecisions] = useState<Decision[]>([]);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(null);
+
+    getDecisions()
+      .then((items) => {
+        if (active) setDecisions(items);
+      })
+      .catch((cause: unknown) => {
+        if (active) {
+          setError(cause instanceof Error ? cause.message : 'An unexpected error occurred.');
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [reloadKey]);
+
+  const filteredDecisions = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return decisions.filter((decision) => {
+      const matchesSearch =
+        query.length === 0 ||
+        decision.id.toLowerCase().includes(query) ||
+        decision.agent_id.toLowerCase().includes(query);
+      const matchesStatus = statusFilter === 'all' || statusGroup(decision.status) === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [decisions, search, statusFilter]);
+
+  const hasFilters = search.trim().length > 0 || statusFilter !== 'all';
+
   return (
     <>
-      <PageHeader title="Decisions" description="Browse recorded AI decision sessions and open an audit trail to inspect its inputs, events, evidence, and reviews." />
-      <PlaceholderPanel title="Decision register" description="No backend data is connected in this foundation step. The decision list, filtering, and pagination will be implemented with API integration." icon={<Layers3 size={17} />} />
+      <PageHeader
+        eyebrow="Overview / Register"
+        title="Decisions"
+        description="The decision register is the entry point for inspecting an agent’s recorded inputs, events, evidence, and audit trail."
+      />
+
+      <div className="mb-4 flex flex-col gap-3 border border-line bg-panel p-4 sm:flex-row sm:items-center">
+        <label className="relative min-w-0 flex-1">
+          <span className="sr-only">Search by decision ID or agent ID</span>
+          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search decision ID or agent ID"
+            className="h-9 w-full border border-line bg-shell pl-9 pr-9 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-accent/50"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-200"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </label>
+        <label className="flex items-center gap-2 text-[11px] text-slate-500">
+          <span className="whitespace-nowrap">Status</span>
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+            className="h-9 min-w-36 border border-line bg-shell px-3 text-xs text-slate-300 outline-none focus:border-accent/50"
+          >
+            {statusFilters.map((filter) => (
+              <option key={filter.value} value={filter.value}>{filter.label}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="mb-3 flex items-center justify-between gap-3 text-[11px] text-slate-500">
+        <span>{loading ? 'Loading records…' : `${filteredDecisions.length} ${filteredDecisions.length === 1 ? 'record' : 'records'}`}</span>
+        <span className="inline-flex items-center gap-1.5 text-amber-300/80">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+          Development mock data · not from the backend
+        </span>
+      </div>
+
+      {loading ? (
+        <LoadingState />
+      ) : error ? (
+        <ErrorState message={error} onRetry={() => setReloadKey((key) => key + 1)} />
+      ) : filteredDecisions.length === 0 ? (
+        <EmptyState hasFilters={hasFilters} />
+      ) : (
+        <>
+          <div className="hidden overflow-x-auto border border-line bg-panel md:block">
+            <table className="w-full min-w-[800px] border-collapse text-left">
+              <thead className="border-b border-line bg-white/[0.015]">
+                <tr className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
+                  <th scope="col" className="px-4 py-3">Decision ID</th>
+                  <th scope="col" className="px-4 py-3">Agent</th>
+                  <th scope="col" className="px-4 py-3">Version</th>
+                  <th scope="col" className="px-4 py-3">Status</th>
+                  <th scope="col" className="px-4 py-3">Events</th>
+                  <th scope="col" className="px-4 py-3">Created</th>
+                  <th scope="col" className="w-8 px-3 py-3"><span className="sr-only">Open decision</span></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line/70">
+                {filteredDecisions.map((decision) => (
+                  <tr
+                    key={decision.id}
+                    tabIndex={0}
+                    role="link"
+                    aria-label={`Open decision ${decision.id}`}
+                    onClick={() => navigate(`/decisions/${decision.id}`)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        navigate(`/decisions/${decision.id}`);
+                      }
+                    }}
+                    className="cursor-pointer text-xs text-slate-300 outline-none hover:bg-white/[0.025] focus-visible:bg-white/[0.035]"
+                  >
+                    <td className="px-4 py-3.5">
+                      <Link to={`/decisions/${decision.id}`} onClick={(event) => event.stopPropagation()} className="font-mono text-[11px] text-blue-300/90 hover:text-blue-200">
+                        {decision.id}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3.5 font-medium text-slate-200">{decision.agent_id}</td>
+                    <td className="px-4 py-3.5 font-mono text-[11px] text-slate-400">{decision.agent_version}</td>
+                    <td className="px-4 py-3.5"><StatusBadge status={decision.status} /></td>
+                    <td className="px-4 py-3.5 font-mono tabular-nums text-slate-400">{decision.event_count}</td>
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-400">{formatCreatedAt(decision.created_at)}</td>
+                    <td className="px-3 py-3.5 text-slate-600"><ChevronRight size={15} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="space-y-2 md:hidden">
+            {filteredDecisions.map((decision) => (
+              <Link
+                key={decision.id}
+                to={`/decisions/${decision.id}`}
+                className="block border border-line bg-panel p-4 outline-none hover:border-slate-600 focus-visible:border-accent/50"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <span className="break-all font-mono text-[10px] leading-5 text-blue-300/90">{decision.id}</span>
+                  <StatusBadge status={decision.status} />
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                  <span className="font-medium text-slate-200">{decision.agent_id}</span>
+                  <span className="font-mono text-[10px] text-slate-500">v{decision.agent_version}</span>
+                </div>
+                <div className="mt-3 flex items-center justify-between border-t border-line pt-3 text-[10px] text-slate-500">
+                  <span className="inline-flex items-center gap-1.5"><Clock3 size={12} />{formatCreatedAt(decision.created_at)}</span>
+                  <span className="font-mono">{decision.event_count} events</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
     </>
   );
 }
