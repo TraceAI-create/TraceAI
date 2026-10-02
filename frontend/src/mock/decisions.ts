@@ -9,7 +9,7 @@ export const mockDecisions: Decision[] = [
     status: 'reviewed_approved',
     created_at: '2025-02-18T14:32:08Z',
     root_hash: '9b72a6fd2c8e4b17a5d0386c2f914e7b8a3d5c1e6f902b4a7d1c8e5f3a6b2094',
-    event_count: 14,
+    event_count: 8,
   },
   {
     id: 'a1e9c462-5b37-49d0-8f24-3c6d72a519be',
