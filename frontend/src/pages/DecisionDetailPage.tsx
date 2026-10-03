@@ -259,9 +259,11 @@ function DecisionContent({ decision }: { decision: DecisionDetail }) {
               <ul className="space-y-3">
                 {decision.evidence.map((item) => (
                   <li key={item.id} className="min-w-0 border-b border-line/70 pb-3 last:border-0 last:pb-0">
-                    <p className="text-xs font-medium text-slate-300">{humanize(item.type)}</p>
-                    <p className="mt-1 text-[10px] text-slate-500">Role: {humanize(item.role)}</p>
-                    <p className="mt-1 break-all font-mono text-[9px] text-slate-600">{item.id}</p>
+                    <Link to={`/evidence/${item.id}`} className="block outline-none hover:text-blue-200 focus-visible:text-blue-200">
+                      <p className="text-xs font-medium text-slate-300">{humanize(item.type)}</p>
+                      <p className="mt-1 text-[10px] text-slate-500">Role: {humanize(item.role)}</p>
+                      <p className="mt-1 break-all font-mono text-[9px] text-blue-300/70">{item.id}</p>
+                    </Link>
                   </li>
                 ))}
               </ul>

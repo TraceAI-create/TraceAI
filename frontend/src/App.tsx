@@ -5,6 +5,7 @@ import DashboardPage from './pages/DashboardPage';
 import DecisionDetailPage from './pages/DecisionDetailPage';
 import DecisionsPage from './pages/DecisionsPage';
 import EvidencePage from './pages/EvidencePage';
+import EvidenceDetailPage from './pages/EvidenceDetailPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PoliciesPage from './pages/PoliciesPage';
 import ReplayPage from './pages/ReplayPage';
@@ -18,6 +19,7 @@ export default function App() {
         <Route path="/decisions" element={<DecisionsPage />} />
         <Route path="/decisions/:decisionId" element={<DecisionDetailPage />} />
         <Route path="/evidence" element={<EvidencePage />} />
+        <Route path="/evidence/:evidenceId" element={<EvidenceDetailPage />} />
         <Route path="/policies" element={<PoliciesPage />} />
         <Route path="/replay" element={<ReplayPage />} />
         <Route path="/audit-reports" element={<AuditReportsPage />} />
