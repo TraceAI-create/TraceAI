@@ -8,6 +8,7 @@ import EvidencePage from './pages/EvidencePage';
 import EvidenceDetailPage from './pages/EvidenceDetailPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PoliciesPage from './pages/PoliciesPage';
+import PolicyDetailPage from './pages/PolicyDetailPage';
 import ReplayPage from './pages/ReplayPage';
 
 export default function App() {
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="/evidence" element={<EvidencePage />} />
         <Route path="/evidence/:evidenceId" element={<EvidenceDetailPage />} />
         <Route path="/policies" element={<PoliciesPage />} />
+        <Route path="/policies/:policyId" element={<PolicyDetailPage />} />
         <Route path="/replay" element={<ReplayPage />} />
         <Route path="/audit-reports" element={<AuditReportsPage />} />
         <Route path="*" element={<NotFoundPage />} />

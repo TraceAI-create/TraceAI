@@ -18,7 +18,9 @@ import {
 } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import type { AuditEvent, DecisionDetail } from '../types/decisionDetail';
+import type { Policy, PolicyEvaluation } from '../types/policy';
 import { getDecisionDetail } from '../services/decisionDetailService';
+import { getEvaluationsForDecision, getPolicyById } from '../services/policyService';
 
 const eventPresentation: Record<string, { title: string; description: string; icon: LucideIcon }> = {
   INPUT_RECEIVED: {
@@ -81,11 +83,11 @@ function formatTimestamp(value: string): string {
 
 function statusStyle(status: string): string {
   const normalized = status.toLowerCase();
-  if (normalized.startsWith('reviewed') || normalized === 'approved') {
+  if (normalized.startsWith('reviewed') || normalized === 'approved' || normalized === 'passed') {
     return 'border-emerald-400/20 bg-emerald-400/[0.08] text-emerald-300';
   }
-  if (normalized.includes('reject')) return 'border-rose-400/20 bg-rose-400/[0.08] text-rose-300';
-  if (normalized.includes('challeng')) return 'border-amber-400/20 bg-amber-400/[0.08] text-amber-300';
+  if (normalized.includes('reject') || normalized === 'failed') return 'border-rose-400/20 bg-rose-400/[0.08] text-rose-300';
+  if (normalized.includes('challeng') || normalized === 'overridden') return 'border-amber-400/20 bg-amber-400/[0.08] text-amber-300';
   if (normalized === 'created' || normalized === 'running') {
     return 'border-sky-400/20 bg-sky-400/[0.08] text-sky-300';
   }
@@ -179,6 +181,24 @@ function SupportingPanel({ title, icon: Icon, children }: { title: string; icon:
 
 function DecisionContent({ decision }: { decision: DecisionDetail }) {
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(() => new Set());
+  const [policyEvaluations, setPolicyEvaluations] = useState<Array<{ evaluation: PolicyEvaluation; policy: Policy | null }>>([]);
+  const [policyLoading, setPolicyLoading] = useState(true);
+  const [policyError, setPolicyError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setPolicyLoading(true);
+    setPolicyError(null);
+    getEvaluationsForDecision(decision.id)
+      .then((evaluations) => Promise.all(evaluations.map(async (evaluation) => ({
+        evaluation,
+        policy: await getPolicyById(evaluation.policy_id),
+      }))))
+      .then((items) => { if (active) setPolicyEvaluations(items); })
+      .catch((cause: unknown) => { if (active) setPolicyError(cause instanceof Error ? cause.message : 'An unexpected error occurred.'); })
+      .finally(() => { if (active) setPolicyLoading(false); });
+    return () => { active = false; };
+  }, [decision.id]);
   const orderedEvents = useMemo(
     () => [...decision.events].sort((a, b) => a.sequence - b.sequence),
     [decision.events],
@@ -272,20 +292,25 @@ function DecisionContent({ decision }: { decision: DecisionDetail }) {
           </SupportingPanel>
 
           <SupportingPanel title="Policy" icon={Scale}>
-            {decision.policies.length ? (
+            {policyLoading ? <p className="text-[11px] text-slate-500">Loading policy evaluations…</p> : policyError ? (
+              <p role="alert" className="text-[11px] text-rose-300">Could not load policy evaluations: {policyError}</p>
+            ) : policyEvaluations.length ? (
               <ul className="space-y-3">
-                {decision.policies.map((policy) => (
-                  <li key={policy.id} className="border-b border-line/70 pb-3 last:border-0 last:pb-0">
-                    <p className="text-xs font-medium text-slate-300">{policy.name}</p>
-                    <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-slate-500">
-                      <span>Version {policy.version}</span>
-                      <StatusBadge status={policy.result} />
-                    </div>
+                {policyEvaluations.map(({ evaluation, policy }) => (
+                  <li key={evaluation.id} className="border-b border-line/70 pb-3 last:border-0 last:pb-0">
+                    <Link to={`/policies/${evaluation.policy_id}`} className="block outline-none hover:text-blue-200 focus-visible:text-blue-200">
+                      <p className="text-xs font-medium text-slate-300">{policy?.name ?? 'Policy record unavailable'}</p>
+                      <p className="mt-1 break-all font-mono text-[9px] text-blue-300/70">{evaluation.policy_id}</p>
+                      <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-slate-500">
+                        <span>Version {evaluation.policy_version}</span>
+                        <StatusBadge status={evaluation.result} />
+                      </div>
+                      <p className="mt-2 text-[10px] leading-4 text-slate-400">{evaluation.summary}</p>
+                    </Link>
                   </li>
                 ))}
               </ul>
-            ) : <p className="text-[11px] text-slate-500">No policy reference in this development record.</p>}
-            <p className="mt-3 border-t border-line pt-2.5 text-[10px] leading-4 text-slate-600">Full policy exploration will be implemented later.</p>
+            ) : <p className="text-[11px] text-slate-500">No policy evaluation recorded.</p>}
           </SupportingPanel>
 
           <SupportingPanel title="Integrity" icon={Fingerprint}>
