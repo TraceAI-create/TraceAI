@@ -393,6 +393,9 @@ function DecisionContent({ decision }: { decision: DecisionDetail }) {
           </div>
           <p className="mt-2 break-all font-mono text-[11px] text-slate-500">{decision.id}</p>
         </div>
+        <Link to={`/audit-reports/${decision.id}`} className="inline-flex h-9 shrink-0 items-center gap-2 border border-line px-3 text-xs text-slate-300 hover:border-slate-600 hover:text-white">
+          <Fingerprint size={13} /> View Audit Report
+        </Link>
       </div>
 
       <section className="mb-6 border border-line bg-panel">

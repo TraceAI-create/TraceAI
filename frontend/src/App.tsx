@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import AppLayout from './layouts/AppLayout';
 import AuditReportsPage from './pages/AuditReportsPage';
+import AuditReportDetailPage from './pages/AuditReportDetailPage';
 import DashboardPage from './pages/DashboardPage';
 import DecisionDetailPage from './pages/DecisionDetailPage';
 import DecisionsPage from './pages/DecisionsPage';
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/replay" element={<ReplayPage />} />
         <Route path="/replay/:replayId" element={<ReplayDetailPage />} />
         <Route path="/audit-reports" element={<AuditReportsPage />} />
+        <Route path="/audit-reports/:decisionId" element={<AuditReportDetailPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
