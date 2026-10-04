@@ -90,11 +90,11 @@ function formatTimestamp(value: string | null): string {
 
 function statusStyle(status: string): string {
   const normalized = status.toLowerCase();
+  if (normalized.includes('reject') || normalized === 'failed') return 'border-rose-400/20 bg-rose-400/[0.08] text-rose-300';
   if (normalized.startsWith('reviewed') || normalized === 'approved' || normalized === 'passed' || normalized === 'chain_intact') {
     return 'border-emerald-400/20 bg-emerald-400/[0.08] text-emerald-300';
   }
-  if (normalized.includes('reject') || normalized === 'failed') return 'border-rose-400/20 bg-rose-400/[0.08] text-rose-300';
-  if (normalized.includes('challeng') || normalized === 'overridden' || normalized === 'requested_review' || normalized === 'chain_warning') return 'border-amber-400/20 bg-amber-400/[0.08] text-amber-300';
+  if (normalized.includes('challeng') || normalized.includes('violat') || normalized === 'overridden' || normalized === 'requested_review' || normalized === 'chain_warning') return 'border-amber-400/20 bg-amber-400/[0.08] text-amber-300';
   if (normalized === 'created' || normalized === 'running' || normalized === 'verification_available') {
     return 'border-sky-400/20 bg-sky-400/[0.08] text-sky-300';
   }
@@ -119,31 +119,32 @@ function EventItem({ event, expanded, onToggle }: { event: AuditEvent; expanded:
   const detailsId = `event-details-${event.id}`;
 
   return (
-    <li className="relative pb-5 pl-10 last:pb-0">
-      <span className="absolute -left-[17px] top-4 flex h-8 w-8 items-center justify-center border border-line bg-[#0b1017] text-slate-400">
-        <Icon size={15} strokeWidth={1.7} />
+    <li className="relative pb-4 pl-9 last:pb-0 sm:pl-10">
+      <span className="absolute -left-[15px] top-3.5 flex h-7 w-7 items-center justify-center border border-line bg-[#0b1017] text-slate-400 sm:-left-[17px] sm:h-8 sm:w-8">
+        <Icon size={14} strokeWidth={1.7} />
       </span>
       <article className="border border-line bg-panel">
         <button
           type="button"
           aria-expanded={expanded}
           aria-controls={detailsId}
+          aria-label={`${expanded ? 'Collapse' : 'Expand'} event ${event.sequence}: ${presentation.title}`}
           onClick={onToggle}
-          className="flex w-full items-start justify-between gap-4 px-4 py-3.5 text-left outline-none hover:bg-white/[0.02] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent/50 sm:px-5"
+          className="flex w-full items-start justify-between gap-3 px-3.5 py-3 text-left outline-none hover:bg-white/[0.02] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent/50 sm:gap-4 sm:px-4 sm:py-3.5"
         >
           <span className="min-w-0">
-            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="text-sm font-medium text-slate-200">{presentation.title}</span>
+            <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span className="font-mono text-[10px] tabular-nums text-slate-500">#{event.sequence}</span>
+              <span className="text-[13px] font-medium text-slate-200">{presentation.title}</span>
               <span className="font-mono text-[9px] uppercase tracking-wider text-slate-500">{event.event_type}</span>
             </span>
-            <span className="mt-1.5 block text-xs leading-5 text-muted">{presentation.description}</span>
-            <span className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-slate-500">
+            <span className="mt-1 block text-[11px] leading-5 text-muted">{presentation.description}</span>
+            <span className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-slate-500">
               <span className="inline-flex items-center gap-1.5"><Clock3 size={11} />{formatTimestamp(event.timestamp)}</span>
               <span>Actor: <span className="font-mono text-slate-400">{event.actor}</span></span>
             </span>
           </span>
-          <span className="flex shrink-0 items-center gap-2 pt-0.5">
-            <span className="font-mono text-[10px] text-slate-500">#{event.sequence}</span>
+          <span className="flex shrink-0 items-center pt-0.5">
             <ChevronDown size={15} className={`text-slate-500 transition-transform ${expanded ? 'rotate-180' : ''}`} />
           </span>
         </button>
@@ -153,7 +154,7 @@ function EventItem({ event, expanded, onToggle }: { event: AuditEvent; expanded:
               <h3 className="text-[10px] font-medium uppercase tracking-wider text-slate-500">Event payload</h3>
               <span className="font-mono text-[9px] text-slate-600">JSON</span>
             </div>
-            <pre className="max-h-80 overflow-auto border border-line bg-shell p-3 font-mono text-[10px] leading-5 text-slate-300 sm:text-[11px]">{JSON.stringify(event.payload, null, 2)}</pre>
+            <pre className="max-h-80 overflow-auto border border-line bg-shell p-3 font-mono text-[10px] leading-5 text-slate-300 [overflow-wrap:anywhere] sm:text-[11px]">{JSON.stringify(event.payload, null, 2)}</pre>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <HashValue label="Event hash" value={event.hash} />
               <HashValue label="Previous hash" value={event.previous_hash} />
@@ -177,11 +178,11 @@ function HashValue({ label, value }: { label: string; value: string | null }) {
 function SupportingPanel({ title, icon: Icon, children }: { title: string; icon: LucideIcon; children: ReactNode }) {
   return (
     <section className="border border-line bg-panel">
-      <div className="flex items-center gap-2 border-b border-line px-4 py-3">
-        <Icon size={14} className="text-slate-500" />
+      <div className="flex min-h-11 items-center gap-2 border-b border-line px-4 py-3">
+        <Icon size={14} className="shrink-0 text-slate-500" />
         <h2 className="text-xs font-medium text-slate-300">{title}</h2>
       </div>
-      <div className="px-4 py-3.5">{children}</div>
+      <div className="min-w-0 px-4 py-3.5">{children}</div>
     </section>
   );
 }
@@ -243,20 +244,22 @@ function ReviewPanel({ decisionId }: { decisionId: string }) {
       ) : latestReview ? (
         <>
           <div className="border-b border-line pb-3">
+            <p className="mb-2 text-[9px] font-medium uppercase tracking-wider text-slate-600">Current / latest review</p>
             <div className="flex flex-wrap items-center justify-between gap-2"><StatusBadge status={latestReview.action} /><span className="text-[10px] text-slate-500">{formatTimestamp(latestReview.created_at)}</span></div>
             <p className="mt-2 text-[10px] text-slate-500">Reviewer <span className="font-mono text-slate-300">{latestReview.reviewer}</span></p>
             <p className="mt-2 text-[11px] leading-5 text-slate-300">{latestReview.comment || 'No comment recorded.'}</p>
           </div>
           <details className="group mt-3" open={reviews.length > 1}>
-            <summary className="flex cursor-pointer list-none items-center gap-2 text-[10px] text-slate-400 outline-none hover:text-slate-200"><ChevronDown size={12} className="transition-transform group-open:rotate-180" />Review history <span className="font-mono text-slate-600">{reviews.length}</span></summary>
+            <summary className="flex cursor-pointer list-none items-center gap-2 text-[10px] text-slate-400 outline-none hover:text-slate-200 focus-visible:ring-1 focus-visible:ring-accent/50"><ChevronDown size={12} className="transition-transform group-open:rotate-180" />Review history <span className="font-mono text-slate-600">{reviews.length}</span></summary>
             <ol className="mt-3 space-y-3 border-l border-line pl-3">
-              {reviews.map((review) => (
+              {reviews.slice(1).map((review) => (
                 <li key={review.id} className="relative">
                   <div className="flex flex-wrap items-center justify-between gap-2"><StatusBadge status={review.action} /><span className="text-[9px] text-slate-600">{formatTimestamp(review.created_at)}</span></div>
                   <p className="mt-1.5 text-[10px] text-slate-500">{review.reviewer}</p>
                   <p className="mt-1 text-[10px] leading-4 text-slate-400">{review.comment || 'No comment recorded.'}</p>
                 </li>
               ))}
+              {reviews.length === 1 && <li className="text-[10px] leading-4 text-slate-600">No earlier review actions.</li>}
             </ol>
           </details>
         </>
@@ -266,7 +269,7 @@ function ReviewPanel({ decisionId }: { decisionId: string }) {
         <form onSubmit={handleSubmit} className="mt-4 border-t border-line pt-4">
           <p className="mb-3 text-[10px] font-medium uppercase tracking-wider text-slate-500">Add development review</p>
           <label className="mb-3 block text-[10px] text-slate-500">Review action
-            <select value={action} onChange={(event) => { setAction(event.target.value as ReviewActionKind | ''); setValidationError(null); }} className="mt-1.5 h-9 w-full border border-line bg-shell px-3 text-xs text-slate-300 outline-none focus:border-accent/50">
+            <select value={action} onChange={(event) => { setAction(event.target.value as ReviewActionKind | ''); setValidationError(null); }} className="mt-1.5 h-10 w-full border border-line bg-shell px-3 text-xs text-slate-300 outline-none focus:border-accent/50 focus-visible:ring-1 focus-visible:ring-accent/30 sm:h-9">
               <option value="">Choose an action</option>
               <option value="APPROVED">Approve</option>
               <option value="REJECTED">Reject</option>
@@ -275,11 +278,11 @@ function ReviewPanel({ decisionId }: { decisionId: string }) {
             </select>
           </label>
           <label className="block text-[10px] text-slate-500">Comment {(action === 'REJECTED' || action === 'OVERRIDDEN') && <span className="text-rose-300">· required</span>}
-            <textarea value={comment} onChange={(event) => { setComment(event.target.value); setValidationError(null); }} rows={3} maxLength={500} placeholder="Add reviewer context…" className="mt-1.5 w-full resize-y border border-line bg-shell px-3 py-2 text-xs leading-5 text-slate-300 outline-none placeholder:text-slate-600 focus:border-accent/50" />
+            <textarea value={comment} onChange={(event) => { setComment(event.target.value); setValidationError(null); }} rows={3} maxLength={500} placeholder="Add reviewer context…" className="mt-1.5 w-full resize-y border border-line bg-shell px-3 py-2 text-xs leading-5 text-slate-300 outline-none placeholder:text-slate-600 focus:border-accent/50 focus-visible:ring-1 focus-visible:ring-accent/30" />
           </label>
           {validationError && <p role="alert" className="mt-2 text-[10px] text-rose-300">{validationError}</p>}
           {submitted && <p role="status" className="mt-2 text-[10px] text-emerald-300/80">Mock review added to this in-memory development session only.</p>}
-          <button type="submit" disabled={submitting} className="mt-3 inline-flex h-9 items-center gap-2 border border-line px-3 text-[11px] text-slate-300 hover:border-slate-600 hover:text-white disabled:opacity-50">
+          <button type="submit" disabled={submitting} className="mt-3 inline-flex min-h-10 items-center gap-2 border border-line px-3 text-[11px] text-slate-300 outline-none hover:border-slate-600 hover:text-white focus-visible:ring-1 focus-visible:ring-accent/50 disabled:opacity-50">
             {submitting ? <LoaderCircle size={13} className="animate-spin" /> : <Check size={13} />}Submit mock review
           </button>
         </form>
@@ -310,7 +313,7 @@ function IntegrityPanel({ decisionId }: { decisionId: string }) {
 
   return (
     <SupportingPanel title="Audit integrity" icon={Fingerprint}>
-      <div className="mb-3 border border-amber-400/15 bg-amber-400/[0.035] px-3 py-2.5 text-[10px] leading-4 text-amber-200/80">Development integrity fixtures. The frontend does not independently verify the cryptographic chain.</div>
+      <div className="mb-3 border border-amber-400/15 bg-amber-400/[0.035] px-3 py-2 text-[10px] leading-4 text-amber-200/80">Development integrity fixture data.</div>
       {loading ? <p role="status" className="text-[11px] text-slate-500">Loading integrity information…</p> : error ? (
         <p role="alert" className="text-[11px] text-rose-300">Could not load integrity information: {error}</p>
       ) : integrity ? (
@@ -323,17 +326,19 @@ function IntegrityPanel({ decisionId }: { decisionId: string }) {
             <div><dt className="mb-1 text-[9px] uppercase tracking-wider text-slate-600">Event count</dt><dd className="font-mono text-xs text-slate-300">{integrity.event_count}</dd></div>
             <div><dt className="mb-1 text-[9px] uppercase tracking-wider text-slate-600">Events hashed</dt><dd className="font-mono text-xs text-slate-300">{integrity.events_hashed}</dd></div>
             <div><dt className="mb-1 text-[9px] uppercase tracking-wider text-slate-600">Algorithm</dt><dd className="font-mono text-[10px] text-slate-400">{integrity.hash_algorithm ?? '—'}</dd></div>
-            <div><dt className="mb-1 text-[9px] uppercase tracking-wider text-slate-600">Source status</dt><dd><StatusBadge status={integrity.verification_status} /></dd></div>
+            <div className="min-w-0"><dt className="mb-1 text-[9px] uppercase tracking-wider text-slate-600">Verification status</dt><dd><StatusBadge status={integrity.verification_status} /></dd></div>
           </dl>
           <div className="mt-3"><p className="mb-1 text-[9px] uppercase tracking-wider text-slate-600">Root hash</p><p className="break-all font-mono text-[10px] text-slate-400" title={integrity.root_hash ?? undefined}>{truncateHash(integrity.root_hash)}</p></div>
-          <p className="mt-3 text-[9px] leading-4 text-slate-600">Integrity data shows the recorded hash chain supplied by the audit system. The current frontend does not independently perform cryptographic verification.</p>
+          <p className="mt-3 text-[9px] leading-4 text-slate-500">The chain status reflects the supplied audit record. Hashes are displayed for inspection; this frontend does not independently recompute or verify them.</p>
           <details className="group mt-3 border-t border-line pt-3">
             <summary className="flex cursor-pointer list-none items-center gap-2 text-[10px] text-slate-400 outline-none hover:text-slate-200"><ChevronDown size={12} className="transition-transform group-open:rotate-180" />Inspect integrity chain <span className="font-mono text-slate-600">{integrity.events.length} records</span></summary>
             <div className="mt-3 space-y-3">
               <HashValue label="Full root hash" value={integrity.root_hash} />
               {integrity.events.slice().sort((a, b) => a.sequence - b.sequence).map((event) => (
-                <div key={event.event_id} className="border-l border-line pl-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[10px] font-medium text-slate-300">Event {event.sequence} · {humanize(event.event_type)}</p><span className="font-mono text-[9px] text-slate-600">{event.event_id}</span></div>
+                <div key={event.event_id} className="min-w-0 border-l border-line pl-3">
+                  <p className="text-[9px] uppercase tracking-wider text-slate-600">Sequence {event.sequence} · Event type</p>
+                  <p className="mt-1 text-[10px] font-medium text-slate-300">{humanize(event.event_type)}</p>
+                  <div className="mt-2"><HashValue label="Event ID" value={event.event_id} /></div>
                   <div className="mt-2 space-y-2"><HashValue label="Event hash · fixture value" value={event.hash} /><HashValue label="Previous hash · fixture value" value={event.previous_hash} /></div>
                 </div>
               ))}
@@ -384,22 +389,23 @@ function DecisionContent({ decision }: { decision: DecisionDetail }) {
 
   return (
     <>
-      <div className="mb-6 flex flex-col justify-between gap-4 border-b border-line pb-6 sm:flex-row sm:items-start">
+      <div className="mb-5 flex flex-col justify-between gap-3 border-b border-line pb-5 sm:flex-row sm:items-start">
         <div className="min-w-0">
           <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.16em] text-accent/80">Decision / Audit detail</p>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-xl font-semibold tracking-tight text-slate-100 sm:text-2xl">Decision audit trail</h1>
             <StatusBadge status={decision.status} />
           </div>
-          <p className="mt-2 break-all font-mono text-[11px] text-slate-500">{decision.id}</p>
+          <p className="mt-2 break-all font-mono text-[11px] leading-5 text-slate-400">{decision.id}</p>
+          <p className="mt-1 text-[10px] text-slate-500"><span className="font-medium text-slate-300">{decision.agent_id}</span><span className="mx-1.5 text-slate-700">·</span>version <span className="font-mono text-slate-400">{decision.agent_version}</span></p>
         </div>
-        <Link to={`/audit-reports/${decision.id}`} className="inline-flex h-9 shrink-0 items-center gap-2 border border-line px-3 text-xs text-slate-300 hover:border-slate-600 hover:text-white">
+        <Link to={`/audit-reports/${decision.id}`} className="inline-flex min-h-9 w-fit shrink-0 items-center gap-2 border border-line px-3 text-xs text-slate-400 outline-none hover:border-slate-600 hover:text-slate-100 focus-visible:ring-1 focus-visible:ring-accent/50">
           <Fingerprint size={13} /> View Audit Report
         </Link>
       </div>
 
-      <section className="mb-6 border border-line bg-panel">
-        <div className="grid grid-cols-2 divide-x divide-y divide-line sm:grid-cols-4 sm:divide-y-0">
+      <section className="mb-5 border border-line bg-panel">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
           <MetadataItem label="Agent" value={decision.agent_id} />
           <MetadataItem label="Agent version" value={decision.agent_version} mono />
           <MetadataItem label="Created" value={formatTimestamp(decision.created_at)} />
@@ -407,22 +413,22 @@ function DecisionContent({ decision }: { decision: DecisionDetail }) {
         </div>
       </section>
 
-      <section className="mb-7 border border-line bg-panel px-5 py-5 sm:px-6">
+      <section className="mb-6 border border-line bg-panel px-4 py-4 sm:px-5 sm:py-5">
         <div className="mb-3 flex items-center gap-2">
           <BrainCircuit size={15} className="text-accent/80" />
-          <h2 className="text-xs font-medium uppercase tracking-wider text-slate-400">Decision summary</h2>
+          <h2 className="text-sm font-semibold text-slate-200">Decision summary</h2>
         </div>
-        <p className="text-sm leading-6 text-slate-200">{decision.decision_summary}</p>
-        <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-line pt-3 text-[11px] text-slate-500">
+        <p className="text-[14px] leading-6 text-slate-200 sm:text-[15px]">{decision.decision_summary}</p>
+        <div className="mt-4 grid gap-x-5 gap-y-2 border-t border-line pt-3 text-[10px] sm:grid-cols-3 sm:gap-y-0 sm:text-[11px]">
           <span>Agent <span className="ml-1 font-mono text-slate-300">{decision.agent_id}</span></span>
           <span>Status <span className="ml-1 text-slate-300">{humanize(decision.status)}</span></span>
           <span>Decision time <span className="ml-1 text-slate-300">{formatTimestamp(decision.created_at)}</span></span>
         </div>
       </section>
 
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-6">
         <section className="min-w-0">
-          <div className="mb-4 flex items-end justify-between gap-3">
+          <div className="mb-3 flex items-end justify-between gap-3 sm:mb-4">
             <div>
               <p className="mb-1 font-mono text-[9px] uppercase tracking-[0.16em] text-accent/70">Ordered event record</p>
               <h2 className="text-base font-semibold text-slate-100">Audit timeline</h2>
@@ -430,7 +436,7 @@ function DecisionContent({ decision }: { decision: DecisionDetail }) {
             <span className="text-[10px] text-slate-500">{orderedEvents.length} events</span>
           </div>
           {orderedEvents.length > 0 ? (
-            <ol className="ml-4 border-l border-line">
+            <ol className="ml-3 border-l border-line sm:ml-4">
               {orderedEvents.map((event) => (
                 <EventItem
                   key={event.id}
@@ -451,16 +457,17 @@ function DecisionContent({ decision }: { decision: DecisionDetail }) {
               <ul className="space-y-3">
                 {decision.evidence.map((item) => (
                   <li key={item.id} className="min-w-0 border-b border-line/70 pb-3 last:border-0 last:pb-0">
-                    <Link to={`/evidence/${item.id}`} className="block outline-none hover:text-blue-200 focus-visible:text-blue-200">
+                    <Link to={`/evidence/${item.id}`} className="block outline-none hover:text-blue-200 focus-visible:text-blue-200 focus-visible:ring-1 focus-visible:ring-accent/50">
                       <p className="text-xs font-medium text-slate-300">{humanize(item.type)}</p>
-                      <p className="mt-1 text-[10px] text-slate-500">Role: {humanize(item.role)}</p>
+                      <p className="mt-1 text-[9px] uppercase tracking-wider text-slate-600">Evidence type</p>
+                      <p className="mt-1 text-[10px] text-slate-500">Role · <span className="text-slate-400">{humanize(item.role)}</span></p>
                       <p className="mt-1 break-all font-mono text-[9px] text-blue-300/70">{item.id}</p>
                     </Link>
                   </li>
                 ))}
               </ul>
             ) : <p className="text-[11px] text-slate-500">No evidence linked in this development record.</p>}
-            <p className="mt-3 border-t border-line pt-2.5 text-[10px] leading-4 text-slate-600">Evidence details will be connected in a future phase.</p>
+            <p className="mt-3 border-t border-line pt-2.5 text-[10px] leading-4 text-slate-600">Open a linked record to inspect its development evidence details.</p>
           </SupportingPanel>
 
           <SupportingPanel title="Policy" icon={Scale}>
@@ -470,14 +477,14 @@ function DecisionContent({ decision }: { decision: DecisionDetail }) {
               <ul className="space-y-3">
                 {policyEvaluations.map(({ evaluation, policy }) => (
                   <li key={evaluation.id} className="border-b border-line/70 pb-3 last:border-0 last:pb-0">
-                    <Link to={`/policies/${evaluation.policy_id}`} className="block outline-none hover:text-blue-200 focus-visible:text-blue-200">
+                    <Link to={`/policies/${evaluation.policy_id}`} className="block outline-none hover:text-blue-200 focus-visible:text-blue-200 focus-visible:ring-1 focus-visible:ring-accent/50">
                       <p className="text-xs font-medium text-slate-300">{policy?.name ?? 'Policy record unavailable'}</p>
                       <p className="mt-1 break-all font-mono text-[9px] text-blue-300/70">{evaluation.policy_id}</p>
                       <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-slate-500">
                         <span>Version {evaluation.policy_version}</span>
                         <StatusBadge status={evaluation.result} />
                       </div>
-                      <p className="mt-2 text-[10px] leading-4 text-slate-400">{evaluation.summary}</p>
+                      <p className="mt-2 border-l border-line pl-2.5 text-[10px] leading-4 text-slate-400"><span className="mb-1 block text-[9px] uppercase tracking-wider text-slate-600">Evaluation summary</span>{evaluation.summary}</p>
                     </Link>
                   </li>
                 ))}
@@ -495,9 +502,9 @@ function DecisionContent({ decision }: { decision: DecisionDetail }) {
 
 function MetadataItem({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="min-w-0 px-4 py-3.5 sm:px-5">
+    <div className="min-w-0 border-b border-line px-4 py-3 last:border-b-0 sm:px-5 sm:py-3.5 sm:odd:border-r sm:[&:nth-child(n+3)]:border-b-0 xl:border-b-0 xl:border-r xl:last:border-r-0">
       <p className="text-[9px] uppercase tracking-wider text-slate-600">{label}</p>
-      <p className={`mt-1.5 truncate text-xs text-slate-300 ${mono ? 'font-mono' : ''}`} title={value}>{value}</p>
+      <p className={`mt-1.5 break-words text-xs font-medium text-slate-200 ${mono ? 'font-mono' : ''}`} title={value}>{value}</p>
     </div>
   );
 }
@@ -564,8 +571,8 @@ export default function DecisionDetailPage() {
 
   return (
     <>
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <Link to="/decisions" className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-slate-100">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <Link to="/decisions" className="inline-flex items-center gap-2 text-xs text-slate-400 outline-none hover:text-slate-100 focus-visible:ring-1 focus-visible:ring-accent/50">
           <ArrowLeft size={14} /> Back to decisions
         </Link>
         <span className="inline-flex items-center gap-1.5 text-[9px] uppercase tracking-wider text-amber-300/80">

@@ -34,18 +34,12 @@ function statusLabel(status: string): string {
 }
 
 function statusClasses(status: string): string {
-  switch (statusGroup(status)) {
-    case 'created':
-      return 'border-sky-400/20 bg-sky-400/[0.08] text-sky-300';
-    case 'reviewed':
-      return 'border-emerald-400/20 bg-emerald-400/[0.08] text-emerald-300';
-    case 'rejected':
-      return 'border-rose-400/20 bg-rose-400/[0.08] text-rose-300';
-    case 'challenged':
-      return 'border-amber-400/20 bg-amber-400/[0.08] text-amber-300';
-    default:
-      return 'border-slate-500/25 bg-slate-500/[0.08] text-slate-300';
-  }
+  const normalized = status.toLowerCase();
+  if (normalized.includes('reject')) return 'border-rose-400/20 bg-rose-400/[0.08] text-rose-300';
+  if (normalized.includes('challeng') || normalized.includes('violat')) return 'border-amber-400/20 bg-amber-400/[0.08] text-amber-300';
+  if (normalized === 'created' || normalized === 'running') return 'border-sky-400/20 bg-sky-400/[0.08] text-sky-300';
+  if (normalized.includes('approved') || normalized === 'reviewed_commented') return 'border-emerald-400/20 bg-emerald-400/[0.08] text-emerald-300';
+  return 'border-slate-500/25 bg-slate-500/[0.08] text-slate-300';
 }
 
 function formatCreatedAt(value: string): string {
@@ -162,7 +156,7 @@ export default function DecisionsPage() {
         description="The decision register is the entry point for inspecting an agent’s recorded inputs, events, evidence, and audit trail."
       />
 
-      <div className="mb-4 flex flex-col gap-3 border border-line bg-panel p-4 sm:flex-row sm:items-center">
+      <div className="mb-4 flex flex-col gap-3 border border-line bg-panel p-3 sm:flex-row sm:items-center sm:p-4">
         <label className="relative min-w-0 flex-1">
           <span className="sr-only">Search by decision ID or agent ID</span>
           <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -170,7 +164,7 @@ export default function DecisionsPage() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search decision ID or agent ID"
-            className="h-9 w-full border border-line bg-shell pl-9 pr-9 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-accent/50"
+            className="h-10 w-full border border-line bg-shell pl-9 pr-9 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-accent/60 focus-visible:ring-1 focus-visible:ring-accent/30 sm:h-9"
           />
           {search && (
             <button
@@ -183,12 +177,12 @@ export default function DecisionsPage() {
             </button>
           )}
         </label>
-        <label className="flex items-center gap-2 text-[11px] text-slate-500">
+        <label className="flex w-full items-center gap-2 text-[11px] text-slate-500 sm:w-auto">
           <span className="whitespace-nowrap">Status</span>
           <select
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-            className="h-9 min-w-36 border border-line bg-shell px-3 text-xs text-slate-300 outline-none focus:border-accent/50"
+            className="h-10 min-w-0 flex-1 border border-line bg-shell px-3 text-xs text-slate-300 outline-none focus:border-accent/60 focus-visible:ring-1 focus-visible:ring-accent/30 sm:h-9 sm:min-w-36 sm:flex-none"
           >
             {statusFilters.map((filter) => (
               <option key={filter.value} value={filter.value}>{filter.label}</option>
@@ -197,8 +191,8 @@ export default function DecisionsPage() {
         </label>
       </div>
 
-      <div className="mb-3 flex items-center justify-between gap-3 text-[11px] text-slate-500">
-        <span>{loading ? 'Loading records…' : `${filteredDecisions.length} ${filteredDecisions.length === 1 ? 'record' : 'records'}`}</span>
+      <div className="mb-3 flex flex-col gap-2 text-[11px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+        <span role="status" className="font-medium text-slate-400">{loading ? 'Loading records…' : `${filteredDecisions.length} ${filteredDecisions.length === 1 ? 'record' : 'records'}`}</span>
         <span className="inline-flex items-center gap-1.5 text-amber-300/80">
           <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
           Development mock data · not from the backend
@@ -213,15 +207,15 @@ export default function DecisionsPage() {
         <EmptyState hasFilters={hasFilters} />
       ) : (
         <>
-          <div className="hidden overflow-x-auto border border-line bg-panel md:block">
+          <div className="hidden border border-line bg-panel xl:block">
             <table className="w-full min-w-[800px] border-collapse text-left">
               <thead className="border-b border-line bg-white/[0.015]">
                 <tr className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
-                  <th scope="col" className="px-4 py-3">Decision ID</th>
+                  <th scope="col" className="px-5 py-3">Decision ID</th>
                   <th scope="col" className="px-4 py-3">Agent</th>
                   <th scope="col" className="px-4 py-3">Version</th>
                   <th scope="col" className="px-4 py-3">Status</th>
-                  <th scope="col" className="px-4 py-3">Events</th>
+                  <th scope="col" className="px-4 py-3 text-right">Events</th>
                   <th scope="col" className="px-4 py-3">Created</th>
                   <th scope="col" className="w-8 px-3 py-3"><span className="sr-only">Open decision</span></th>
                 </tr>
@@ -240,35 +234,35 @@ export default function DecisionsPage() {
                         navigate(`/decisions/${decision.id}`);
                       }
                     }}
-                    className="cursor-pointer text-xs text-slate-300 outline-none hover:bg-white/[0.025] focus-visible:bg-white/[0.035]"
+                    className="group cursor-pointer text-xs text-slate-300 outline-none hover:bg-white/[0.035] focus-visible:bg-white/[0.045] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent/50"
                   >
-                    <td className="px-4 py-3.5">
+                    <td className="whitespace-nowrap px-5 py-4">
                       <Link to={`/decisions/${decision.id}`} onClick={(event) => event.stopPropagation()} className="font-mono text-[11px] text-blue-300/90 hover:text-blue-200">
                         {decision.id}
                       </Link>
                     </td>
-                    <td className="px-4 py-3.5 font-medium text-slate-200">{decision.agent_id}</td>
-                    <td className="px-4 py-3.5 font-mono text-[11px] text-slate-400">{decision.agent_version}</td>
-                    <td className="px-4 py-3.5"><StatusBadge status={decision.status} /></td>
-                    <td className="px-4 py-3.5 font-mono tabular-nums text-slate-400">{decision.event_count}</td>
-                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-400">{formatCreatedAt(decision.created_at)}</td>
-                    <td className="px-3 py-3.5 text-slate-600"><ChevronRight size={15} /></td>
+                    <td className="whitespace-nowrap px-4 py-4 font-medium text-slate-200">{decision.agent_id}</td>
+                    <td className="whitespace-nowrap px-4 py-4 font-mono text-[11px] text-slate-400">{decision.agent_version}</td>
+                    <td className="whitespace-nowrap px-4 py-4"><StatusBadge status={decision.status} /></td>
+                    <td className="px-4 py-4 text-right font-mono tabular-nums text-slate-400">{decision.event_count}</td>
+                    <td className="whitespace-nowrap px-4 py-4 text-slate-400">{formatCreatedAt(decision.created_at)}</td>
+                    <td className="px-3 py-4 text-slate-600 transition-colors group-hover:text-blue-300"><ChevronRight size={15} /></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          <div className="space-y-2 md:hidden">
+          <div className="space-y-2 xl:hidden">
             {filteredDecisions.map((decision) => (
               <Link
                 key={decision.id}
                 to={`/decisions/${decision.id}`}
-                className="block border border-line bg-panel p-4 outline-none hover:border-slate-600 focus-visible:border-accent/50"
+                className="group block border border-line bg-panel p-4 outline-none transition-colors hover:border-slate-600 hover:bg-white/[0.015] focus-visible:border-accent/50 focus-visible:ring-1 focus-visible:ring-accent/40"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <span className="break-all font-mono text-[10px] leading-5 text-blue-300/90">{decision.id}</span>
-                  <StatusBadge status={decision.status} />
+                  <span className="min-w-0 break-all font-mono text-[10px] leading-5 text-blue-300/90">{decision.id}</span>
+                  <span className="flex shrink-0 items-center gap-2"><StatusBadge status={decision.status} /><ChevronRight size={14} className="text-slate-600 transition-colors group-hover:text-blue-300" /></span>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                   <span className="font-medium text-slate-200">{decision.agent_id}</span>
