@@ -95,7 +95,7 @@ function ResultPanel({ label, result, subtitle }: { label: string; result: strin
     <div className="min-w-0 border border-line bg-shell px-4 py-4">
       <p className="text-[9px] uppercase tracking-[0.15em] text-slate-500">{label}</p>
       <p className="mt-2 break-words text-lg font-semibold tracking-wide text-slate-100">{humanize(result)}</p>
-      <p className="mt-1 text-[10px] text-slate-500">{subtitle}</p>
+      <p className="mt-1 break-words text-[10px] text-slate-500">{subtitle}</p>
     </div>
   );
 }
@@ -128,11 +128,13 @@ function ReplayResult({ replay, decision, detail }: { replay: ReplayRun; decisio
         </span>
       </div>
 
-      <div className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_28px_minmax(0,1fr)] sm:items-center sm:p-5">
+      <div className="grid gap-3 p-4 lg:grid-cols-[minmax(0,1fr)_28px_minmax(0,1fr)] lg:items-center lg:p-5">
         <ResultPanel label="Original decision" result={replay.original_result} subtitle={decision.id} />
-        <ArrowRight size={15} className="mx-auto hidden text-slate-600 sm:block" />
+        <ArrowRight size={15} className="mx-auto hidden text-slate-600 lg:block" />
         <ResultPanel label={replay.mode === 'WHAT_IF' ? 'What-if replay' : 'Deterministic replay'} result={replay.replay_result} subtitle="Development fixture · not a model execution" />
       </div>
+
+      {replay.original_result === replay.replay_result && <p className="px-4 pb-1 text-[10px] text-emerald-300/80 sm:px-5">Recorded and replay outcomes match.</p>}
 
       <div className="px-4 pb-5 sm:px-5">
         <div className="border-l border-line pl-3">
@@ -141,25 +143,18 @@ function ReplayResult({ replay, decision, detail }: { replay: ReplayRun; decisio
         </div>
 
         <div className="mt-5 border-t border-line pt-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-[10px] font-medium uppercase tracking-wider text-slate-500">Condition comparison</h3>
-            <span className="text-[9px] text-slate-600">Only changed conditions are marked</span>
+            <span className="text-right text-[9px] text-slate-600">Only changed conditions are marked</span>
           </div>
           {replay.conditions.length ? (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[520px] text-left">
-                <thead><tr className="text-[9px] uppercase tracking-wider text-slate-600"><th className="pb-2 pr-3 font-medium">Condition</th><th className="pb-2 pr-3 font-medium">Original</th><th className="pb-2 pr-3 font-medium">Replay</th><th className="pb-2 font-medium">State</th></tr></thead>
-                <tbody className="divide-y divide-line/60">
-                  {replay.conditions.map((condition) => (
-                    <tr key={condition.name} className="text-[10px]">
-                      <td className="py-2 pr-3 text-slate-300">{condition.name}</td>
-                      <td className="py-2 pr-3 font-mono text-slate-500">{condition.original_value}</td>
-                      <td className={`py-2 pr-3 font-mono ${condition.changed ? 'text-amber-200' : 'text-slate-500'}`}>{condition.replay_value}</td>
-                      <td className="py-2">{condition.changed ? <span className="text-[9px] text-amber-300">Changed</span> : <span className="text-[9px] text-slate-600">Unchanged</span>}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="space-y-2">
+              {replay.conditions.map((condition) => (
+                <div key={condition.name} className="min-w-0 border border-line/70 px-3 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[11px] font-medium text-slate-300">{condition.name}</p>{condition.changed ? <span className="text-[9px] text-amber-300">Changed</span> : <span className="text-[9px] text-slate-600">Unchanged</span>}</div>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2"><div className="min-w-0"><p className="mb-1 text-[9px] uppercase tracking-wider text-slate-600">Original condition</p><p className="break-words font-mono text-[10px] text-slate-500">{condition.original_value}</p></div><div className="min-w-0"><p className="mb-1 text-[9px] uppercase tracking-wider text-slate-600">Replay condition</p><p className={`break-words font-mono text-[10px] ${condition.changed ? 'text-amber-200' : 'text-slate-500'}`}>{condition.replay_value}</p></div></div>
+                </div>
+              ))}
             </div>
           ) : <p className="text-[11px] text-slate-500">No captured conditions are attached to this fixture.</p>}
         </div>
@@ -172,7 +167,7 @@ function ReplayResult({ replay, decision, detail }: { replay: ReplayRun; decisio
                 {replay.differences.map((difference) => (
                   <li key={`${difference.field}-${difference.original_value}-${difference.replay_value}`} className="border-l border-amber-400/30 pl-3">
                     <p className="text-[11px] font-medium text-slate-300">{difference.field}</p>
-                    <p className="mt-0.5 font-mono text-[10px] text-slate-400">{difference.original_value} <span className="text-slate-600">→</span> {difference.replay_value}</p>
+                    <p className="mt-0.5 break-words font-mono text-[10px] text-slate-400">{difference.original_value} <span className="text-slate-600">→</span> {difference.replay_value}</p>
                     <p className="mt-1 text-[10px] leading-4 text-slate-500">{difference.significance}</p>
                   </li>
                 ))}
@@ -189,11 +184,11 @@ function ReplayResult({ replay, decision, detail }: { replay: ReplayRun; decisio
                     <p className="mb-2 text-[9px] uppercase tracking-wider text-slate-600">{label}</p>
                     <p className="mb-1 text-[9px] text-slate-600">Evidence</p>
                     {detail?.evidence.length ? detail.evidence.map((item) => (
-                      <Link key={item.id} to={`/evidence/${item.id}`} className="mb-1 block break-all font-mono text-[9px] text-blue-300/75 hover:text-blue-200">{item.id}</Link>
+                      <Link key={item.id} to={`/evidence/${item.id}`} className="mb-1 block break-all font-mono text-[9px] text-blue-300/75 outline-none hover:text-blue-200 focus-visible:ring-1 focus-visible:ring-accent/50">{item.id}</Link>
                     )) : <p className="mb-1 text-[9px] text-slate-600">No evidence reference</p>}
                     <p className="mb-1 mt-2 text-[9px] text-slate-600">Policy</p>
                     {detail?.policies.length ? detail.policies.map((item) => (
-                      <Link key={item.id} to={`/policies/${item.id}`} className="block break-words text-[9px] text-blue-300/75 hover:text-blue-200">{item.name} · v{replayPolicyVersion ?? item.version}</Link>
+                      <Link key={item.id} to={`/policies/${item.id}`} className="block break-words text-[9px] text-blue-300/75 outline-none hover:text-blue-200 focus-visible:ring-1 focus-visible:ring-accent/50">{item.name} · v{replayPolicyVersion ?? item.version}</Link>
                     )) : <p className="text-[9px] text-slate-600">No policy reference</p>}
                   </div>
                 );
@@ -204,7 +199,7 @@ function ReplayResult({ replay, decision, detail }: { replay: ReplayRun; decisio
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3 text-[10px] text-slate-500">
           <span>Created {formatTimestamp(replay.created_at)}{replay.completed_at ? ` · completed ${formatTimestamp(replay.completed_at)}` : ''}</span>
-          <Link to={`/decisions/${decision.id}`} className="inline-flex items-center gap-1.5 text-blue-300/80 hover:text-blue-200">Open original decision <ArrowRight size={12} /></Link>
+          <Link to={`/decisions/${decision.id}`} className="inline-flex items-center gap-1.5 text-blue-300/80 outline-none hover:text-blue-200 focus-visible:ring-1 focus-visible:ring-accent/50">Open original decision <ArrowRight size={12} /></Link>
         </div>
       </div>
     </section>
@@ -322,24 +317,23 @@ export default function ReplayPage() {
       {decisionError ? <div role="alert" className="mb-5 border border-rose-400/20 bg-rose-400/[0.04] px-5 py-4 text-xs text-rose-200">Could not load decisions: {decisionError}</div> : null}
 
       <section className="mb-6 border border-line bg-panel p-4 sm:p-5">
-        <div className="mb-3 flex items-center gap-2"><Search size={14} className="text-slate-500" /><h2 className="text-xs font-medium text-slate-300">Select a decision</h2></div>
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(260px,1fr)]">
-          <label className="relative">
-            <span className="sr-only">Search by decision ID or agent ID</span>
-            <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-            <input value={decisionQuery} onChange={(event) => setDecisionQuery(event.target.value)} placeholder="Filter by decision ID or agent" className="h-10 w-full border border-line bg-shell pl-9 pr-9 text-xs text-slate-300 outline-none placeholder:text-slate-600 focus:border-accent/50" />
-            {decisionQuery && <button type="button" aria-label="Clear decision search" onClick={() => setDecisionQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-200"><X size={13} /></button>}
+        <div className="mb-3 flex items-center gap-2"><Search size={14} className="text-slate-500" /><h2 className="text-xs font-medium text-slate-300">Choose a decision</h2></div>
+        <div className="grid gap-3 lg:grid-cols-2">
+          <label className="relative block min-w-0">
+            <span className="mb-1.5 block text-[10px] text-slate-500">1 · Search available decisions</span>
+            <Search size={14} className="pointer-events-none absolute left-3 top-[2.45rem] -translate-y-1/2 text-slate-600" />
+            <input aria-label="Search available decisions by ID or agent" value={decisionQuery} onChange={(event) => setDecisionQuery(event.target.value)} placeholder="Filter by decision ID or agent" className="h-10 w-full border border-line bg-shell pl-9 pr-9 text-xs text-slate-300 outline-none placeholder:text-slate-600 focus:border-accent/50 focus-visible:ring-1 focus-visible:ring-accent/30" />
+            {decisionQuery && <button type="button" aria-label="Clear decision search" onClick={() => setDecisionQuery('')} className="absolute right-2 top-[2.45rem] -translate-y-1/2 p-1 text-slate-500 outline-none hover:text-slate-200 focus-visible:ring-1 focus-visible:ring-accent/50"><X size={13} /></button>}
           </label>
-          <select aria-label="Choose a decision" value={selectedDecisionId} onChange={(event) => { setSelectedDecisionId(event.target.value); setActiveReplay(null); }} disabled={decisionLoading} className="h-10 min-w-0 border border-line bg-shell px-3 text-xs text-slate-300 outline-none focus:border-accent/50 disabled:opacity-50">
-            <option value="">{decisionLoading ? 'Loading decisions…' : 'Select a decision'}</option>
-            {filteredDecisions.map((decision) => <option key={decision.id} value={decision.id}>{decision.agent_id} · {decision.id}</option>)}
-          </select>
+          <label className="block min-w-0"><span className="mb-1.5 block text-[10px] text-slate-500">2 · Select the decision to investigate</span><select aria-label="Choose a decision" value={selectedDecisionId} onChange={(event) => { setSelectedDecisionId(event.target.value); setActiveReplay(null); }} disabled={decisionLoading} className="h-10 w-full min-w-0 border border-line bg-shell px-3 text-xs text-slate-300 outline-none focus:border-accent/50 focus-visible:ring-1 focus-visible:ring-accent/30 disabled:opacity-50"><option value="">{decisionLoading ? 'Loading decisions…' : 'Select a decision'}</option>{selectedDecision && !filteredDecisions.some((decision) => decision.id === selectedDecision.id) && <option value={selectedDecision.id}>{selectedDecision.agent_id} · {selectedDecision.id}</option>}{filteredDecisions.map((decision) => <option key={decision.id} value={decision.id}>{decision.agent_id} · {decision.id}</option>)}</select></label>
         </div>
         {selectedDecision && (
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line pt-3 text-[10px] text-slate-500">
-            <span className="font-mono text-slate-400">{selectedDecision.id}</span><span>{selectedDecision.agent_id}</span><span className="font-mono">v{selectedDecision.agent_version}</span><span>Original status: {humanize(selectedDecision.status)}</span>
+          <div className="mt-4 border border-line bg-shell/70 p-3 sm:p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="mb-1 text-[9px] uppercase tracking-wider text-slate-600">Selected decision</p><p className="break-all font-mono text-[10px] text-slate-300">{selectedDecision.id}</p></div><Link to={`/decisions/${selectedDecision.id}`} className="shrink-0 text-[10px] text-blue-300/80 outline-none hover:text-blue-200 focus-visible:ring-1 focus-visible:ring-accent/50">Open detail <ArrowRight size={11} className="inline" /></Link></div>
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500"><span>{selectedDecision.agent_id}</span><span className="font-mono">v{selectedDecision.agent_version}</span><span>Original status · {humanize(selectedDecision.status)}</span></div>
           </div>
         )}
+        {!selectedDecision && !decisionLoading && <p className="mt-3 text-[10px] text-slate-600">Search to narrow the available decisions, then choose one from the selector.</p>}
       </section>
 
       {!selectedDecision ? (
@@ -365,11 +359,11 @@ export default function ReplayPage() {
             <div className="grid gap-3 md:grid-cols-2">
               <button type="button" aria-pressed={mode === 'DETERMINISTIC'} onClick={() => { setMode('DETERMINISTIC'); setActiveReplay(null); }} className={`border px-4 py-4 text-left outline-none focus-visible:ring-1 focus-visible:ring-accent/50 ${mode === 'DETERMINISTIC' ? 'border-accent/35 bg-accent/[0.045]' : 'border-line bg-panel hover:border-slate-600'}`}>
                 <span className="flex items-center justify-between"><span className="text-xs font-medium text-slate-200">Deterministic replay</span><RotateCcw size={15} className={mode === 'DETERMINISTIC' ? 'text-accent' : 'text-slate-500'} /></span>
-                <span className="mt-1.5 block text-[11px] leading-5 text-slate-500">Replay the recorded decision using the same captured conditions.</span>
+                <span className="mt-1.5 block text-[11px] leading-5 text-slate-500">Replay the recorded conditions to examine reproducibility.</span>
               </button>
               <button type="button" aria-pressed={mode === 'WHAT_IF'} onClick={() => { setMode('WHAT_IF'); setActiveReplay(null); }} className={`border px-4 py-4 text-left outline-none focus-visible:ring-1 focus-visible:ring-accent/50 ${mode === 'WHAT_IF' ? 'border-accent/35 bg-accent/[0.045]' : 'border-line bg-panel hover:border-slate-600'}`}>
                 <span className="flex items-center justify-between"><span className="text-xs font-medium text-slate-200">What-if replay</span><GitCompareArrows size={15} className={mode === 'WHAT_IF' ? 'text-accent' : 'text-slate-500'} /></span>
-                <span className="mt-1.5 block text-[11px] leading-5 text-slate-500">Modify selected conditions to inspect a mock alternative outcome.</span>
+                <span className="mt-1.5 block text-[11px] leading-5 text-slate-500">Change selected conditions to explore a hypothetical outcome.</span>
               </button>
             </div>
           </section>
@@ -382,15 +376,15 @@ export default function ReplayPage() {
                   const replayValue = whatIfValues[condition.name] ?? condition.value;
                   const changed = replayValue !== condition.value;
                   return (
-                    <label key={condition.name} className="grid gap-2 px-4 py-3 sm:grid-cols-[minmax(140px,0.8fr)_minmax(0,1fr)_minmax(0,1fr)] sm:items-center sm:px-5">
-                      <span className="text-[11px] text-slate-300">{condition.name}</span>
-                      <span className="min-w-0"><span className="mb-1 block text-[9px] uppercase tracking-wider text-slate-600">Original</span><span className="block truncate font-mono text-[11px] text-slate-500">{condition.value}</span></span>
-                      <span className="min-w-0"><span className="mb-1 block text-[9px] uppercase tracking-wider text-slate-600">What-if value</span><input type={condition.inputType ?? 'text'} value={replayValue} onChange={(event) => { setWhatIfValues((current) => ({ ...current, [condition.name]: event.target.value })); setActiveReplay(null); }} className={`h-9 w-full border bg-shell px-3 font-mono text-[11px] outline-none focus:border-accent/50 ${changed ? 'border-amber-400/30 text-amber-200' : 'border-line text-slate-300'}`} /></span>
+                    <label key={condition.name} className="grid min-w-0 gap-2 px-4 py-3 sm:grid-cols-[minmax(120px,0.7fr)_minmax(0,1fr)_minmax(0,1fr)] sm:items-center sm:px-5">
+                      <span className="text-[11px] font-medium text-slate-300">{condition.name}</span>
+                      <span className="min-w-0 border border-line/70 bg-shell/50 px-3 py-2"><span className="mb-1 block text-[9px] uppercase tracking-wider text-slate-600">Original condition</span><span className="block break-words font-mono text-[11px] text-slate-500">{condition.value}</span></span>
+                      <span className="min-w-0"><span className="mb-1 block text-[9px] uppercase tracking-wider text-slate-600">What-if value</span><input aria-label={`${condition.name} what-if value`} type={condition.inputType ?? 'text'} value={replayValue} onChange={(event) => { setWhatIfValues((current) => ({ ...current, [condition.name]: event.target.value })); setActiveReplay(null); }} className={`h-10 w-full border bg-shell px-3 font-mono text-[11px] outline-none focus:border-accent/50 focus-visible:ring-1 focus-visible:ring-accent/30 sm:h-9 ${changed ? 'border-amber-400/30 text-amber-200' : 'border-line text-slate-300'}`} /></span>
                     </label>
                   );
                 })}
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 sm:px-5"><span className="text-[10px] text-slate-500">{changedConditionCount ? `${changedConditionCount} condition${changedConditionCount === 1 ? '' : 's'} changed` : 'No conditions changed'}</span><button type="button" onClick={() => { setWhatIfValues(Object.fromEntries(conditionTemplates.map((condition) => [condition.name, condition.value]))); setActiveReplay(null); }} className="text-[10px] text-slate-400 hover:text-slate-200">Reset conditions</button></div>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 sm:px-5"><span className="text-[10px] text-slate-500">{changedConditionCount ? `${changedConditionCount} condition${changedConditionCount === 1 ? '' : 's'} changed` : 'No conditions changed'}</span><button type="button" onClick={() => { setWhatIfValues(Object.fromEntries(conditionTemplates.map((condition) => [condition.name, condition.value]))); setActiveReplay(null); }} className="min-h-9 text-[10px] text-slate-400 outline-none hover:text-slate-200 focus-visible:ring-1 focus-visible:ring-accent/50">Reset conditions</button></div>
             </section>
           )}
 
@@ -406,7 +400,7 @@ export default function ReplayPage() {
           <section className="border border-line bg-panel">
             <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5"><div><p className="mb-1 font-mono text-[9px] uppercase tracking-[0.14em] text-slate-600">Selected decision</p><h2 className="text-xs font-medium text-slate-300">Replay history</h2></div><span className="font-mono text-[10px] text-slate-500">{history.length} runs</span></div>
             {historyLoading ? <div className="px-5 py-4"><LoadingState label="Loading replay history…" /></div> : history.length ? (
-              <div className="overflow-x-auto"><table className="w-full min-w-[700px] text-left"><thead className="border-b border-line/70"><tr className="text-[9px] uppercase tracking-wider text-slate-600"><th className="px-4 py-3 font-medium">Replay ID</th><th className="px-4 py-3 font-medium">Mode</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 font-medium">Created</th><th className="px-4 py-3 font-medium">Original</th><th className="px-4 py-3 font-medium">Replay</th></tr></thead><tbody className="divide-y divide-line/70">{history.map((run) => <tr key={run.id} className={`text-[10px] hover:bg-white/[0.02] ${activeReplay?.id === run.id ? 'bg-white/[0.025]' : ''}`}><td className="max-w-[210px] px-4 py-3"><Link to={`/replay/${run.id}`} className="break-all font-mono text-blue-300/80 hover:text-blue-200">{run.id}</Link></td><td className="px-4 py-3 text-slate-400">{humanize(run.mode)}</td><td className="px-4 py-3 text-slate-400">{humanize(run.status)}</td><td className="whitespace-nowrap px-4 py-3 text-slate-500">{formatTimestamp(run.created_at)}</td><td className="px-4 py-3"><ResultBadge result={run.original_result} /></td><td className="px-4 py-3"><button type="button" onClick={() => { void selectHistoricalReplay(run); }} className="text-left"><ResultBadge result={run.replay_result} /></button></td></tr>)}</tbody></table></div>
+              <ul className="divide-y divide-line/70">{history.map((run) => <li key={run.id} className={`min-w-0 p-4 sm:px-5 ${activeReplay?.id === run.id ? 'bg-white/[0.025]' : ''}`}><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><Link to={`/replay/${run.id}`} className="break-all font-mono text-[10px] text-blue-300/80 outline-none hover:text-blue-200 focus-visible:ring-1 focus-visible:ring-accent/50">{run.id}</Link><p className="mt-1 break-all font-mono text-[9px] text-slate-600">Decision · {run.decision_id}</p></div><span className="text-[10px] text-slate-500">{formatTimestamp(run.created_at)}</span></div><div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line/70 pt-3"><span className="text-[10px] text-slate-400">{humanize(run.mode)}</span><span className="text-[10px] text-slate-500">{humanize(run.status)}</span><div className="flex flex-wrap items-center gap-2"><span className="text-[9px] text-slate-600">Original</span><ResultBadge result={run.original_result} /><ArrowRight size={12} className="text-slate-600" /><span className="text-[9px] text-slate-600">Replay</span><ResultBadge result={run.replay_result} /></div><button type="button" onClick={() => { void selectHistoricalReplay(run); }} className="ml-auto min-h-9 border border-line px-3 text-[10px] text-slate-400 outline-none hover:border-slate-600 hover:text-slate-200 focus-visible:ring-1 focus-visible:ring-accent/50">Load comparison</button></div></li>)}</ul>
             ) : <div className="px-5 py-7 text-xs text-slate-500">No replay history for this decision yet. Run a replay to create a development record.</div>}
           </section>
         </>

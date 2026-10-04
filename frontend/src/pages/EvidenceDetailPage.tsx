@@ -60,7 +60,7 @@ function MetadataField({ label, value, mono = false }: { label: string; value: s
   return (
     <div className="min-w-0 border-b border-line/70 pb-3 last:border-b-0 sm:last:border-b sm:[&:nth-last-child(-n+2)]:border-b-0">
       <p className="mb-1.5 text-[9px] uppercase tracking-wider text-slate-600">{label}</p>
-      <p className={`break-words text-xs text-slate-300 ${mono ? 'font-mono' : ''}`}>{value || '—'}</p>
+      <p className={`break-words text-xs text-slate-300 ${mono ? 'font-mono [overflow-wrap:anywhere]' : ''}`} title={value ?? undefined}>{value || '—'}</p>
     </div>
   );
 }
@@ -97,13 +97,13 @@ function EvidenceContent({ evidence }: { evidence: Evidence }) {
         {isStructured && <span className="font-mono text-[9px] text-slate-600">STRUCTURED JSON</span>}
       </div>
       <div className="p-4 sm:p-5">
-        {expanded && isStructured ? (
-          <pre className="max-h-[520px] overflow-auto border border-line bg-shell p-4 font-mono text-[11px] leading-5 text-slate-300">{JSON.stringify(parsedContent, null, 2)}</pre>
+        {isStructured && expanded ? (
+          <pre className="max-h-[520px] overflow-auto border border-line bg-shell p-4 font-mono text-[11px] leading-5 text-slate-300 [overflow-wrap:anywhere]">{JSON.stringify(parsedContent, null, 2)}</pre>
         ) : (
-          <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words border border-line bg-shell p-4 font-mono text-[11px] leading-5 text-slate-300">{expanded ? evidence.content : preview || 'No content preview is available.'}</pre>
+          <div className={`max-h-[420px] overflow-auto whitespace-pre-wrap break-words border border-line bg-shell p-4 text-xs leading-6 text-slate-300 ${isStructured ? 'font-mono text-[11px] leading-5 [overflow-wrap:anywhere]' : ''}`}>{expanded ? evidence.content : preview || 'No content preview is available.'}</div>
         )}
         {hasMore && (
-          <button type="button" aria-expanded={expanded} onClick={() => setExpanded((current) => !current)} className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-blue-300 hover:text-blue-200">
+          <button type="button" aria-expanded={expanded} onClick={() => setExpanded((current) => !current)} className="mt-3 inline-flex min-h-9 items-center gap-1.5 text-[11px] text-blue-300 outline-none hover:text-blue-200 focus-visible:ring-1 focus-visible:ring-accent/50">
             {expanded ? 'Show preview' : 'Expand full content'} <ChevronDown size={13} className={expanded ? 'rotate-180' : ''} />
           </button>
         )}
@@ -143,7 +143,7 @@ function EvidenceDetail({ evidence }: { evidence: Evidence }) {
   return (
     <>
       <div className="mb-6 border-b border-line pb-6">
-        <Link to="/evidence" className="mb-5 inline-flex items-center gap-2 text-xs text-slate-400 hover:text-slate-100"><ArrowLeft size={14} />Back to evidence</Link>
+        <Link to="/evidence" className="mb-5 inline-flex items-center gap-2 text-xs text-slate-400 outline-none hover:text-slate-100 focus-visible:ring-1 focus-visible:ring-accent/50"><ArrowLeft size={14} />Back to evidence</Link>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="mb-3 flex items-center gap-2 text-accent/80"><Icon size={16} /><span className="font-mono text-[10px] uppercase tracking-[0.16em]">Evidence record</span></div>
@@ -193,7 +193,7 @@ function EvidenceDetail({ evidence }: { evidence: Evidence }) {
               <ul className="space-y-3">
                 {evidence.linked_decisions.map((decision) => (
                   <li key={decision.id}>
-                    <Link to={`/decisions/${decision.id}`} className="block border border-line px-3 py-3 outline-none hover:border-slate-600 focus-visible:border-accent/50">
+                    <Link to={`/decisions/${decision.id}`} className="block border border-line px-3 py-3 outline-none hover:border-slate-600 focus-visible:border-accent/50 focus-visible:ring-1 focus-visible:ring-accent/40">
                       <div className="flex items-start justify-between gap-2">
                         <span className="break-all font-mono text-[9px] leading-4 text-blue-300/90">{decision.id}</span>
                         <span className={`inline-flex shrink-0 border px-1.5 py-1 text-[9px] text-slate-300 ${statusStyle(decision.status)}`}>{humanize(decision.status)}</span>
@@ -234,8 +234,8 @@ export default function EvidenceDetailPage() {
 
   return (
     <>
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <Link to="/evidence" className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-slate-100"><ArrowLeft size={14} />Back to evidence</Link>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <Link to="/evidence" className="inline-flex items-center gap-2 text-xs text-slate-400 outline-none hover:text-slate-100 focus-visible:ring-1 focus-visible:ring-accent/50"><ArrowLeft size={14} />Back to evidence</Link>
         <span className="inline-flex items-center gap-1.5 text-[9px] uppercase tracking-wider text-amber-300/80"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" />Development mock data</span>
       </div>
       {loading ? <LoadingState /> : error ? <ErrorState message={error} /> : evidence ? <EvidenceDetail key={evidence.id} evidence={evidence} /> : <NotFoundState />}

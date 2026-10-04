@@ -56,11 +56,12 @@ function ReplayDetail({ replay }: { replay: ReplayRun }) {
         </div>
         <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.16em] text-accent/80">Replay / Run detail</p>
         <h1 className="text-xl font-semibold tracking-tight text-slate-100 sm:text-2xl">{deterministic ? 'Deterministic replay' : 'What-if replay'}</h1>
-        <p className="mt-2 break-all font-mono text-[10px] text-slate-500">{replay.id}</p>
+        <p className="mt-2 break-all font-mono text-[10px] leading-5 text-slate-400">{replay.id}</p>
+        <p className="mt-1 text-[10px] text-slate-500">Decision <Link to={`/decisions/${replay.decision_id}`} className="break-all font-mono text-blue-300/80 outline-none hover:text-blue-200 focus-visible:ring-1 focus-visible:ring-accent/50">{replay.decision_id}</Link></p>
       </div>
 
       <section className="mb-6 border border-line bg-panel">
-        <div className="grid grid-cols-2 divide-x divide-y divide-line sm:grid-cols-4 sm:divide-y-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
           <Metadata label="Mode" value={humanize(replay.mode)} />
           <Metadata label="Status" value={humanize(replay.status)} />
           <Metadata label="Created" value={formatTimestamp(replay.created_at)} />
@@ -70,23 +71,24 @@ function ReplayDetail({ replay }: { replay: ReplayRun }) {
 
       <section className="mb-6 border border-line bg-panel p-4 sm:p-5">
         <div className="mb-3 flex items-center justify-between gap-3"><h2 className="text-xs font-medium uppercase tracking-wider text-slate-500">Outcome comparison</h2><Link to={`/decisions/${replay.decision_id}`} className="inline-flex items-center gap-1.5 text-[10px] text-blue-300/80 hover:text-blue-200">Open decision <ArrowRight size={12} /></Link></div>
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_28px_minmax(0,1fr)] sm:items-center">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_28px_minmax(0,1fr)] lg:items-center">
           <div className="border border-line bg-shell px-4 py-4"><p className="text-[9px] uppercase tracking-wider text-slate-500">Original decision</p><div className="mt-2"><OutcomeBadge value={replay.original_result} /></div></div>
-          <ArrowRight size={15} className="mx-auto hidden text-slate-600 sm:block" />
+          <ArrowRight size={15} className="mx-auto hidden text-slate-600 lg:block" />
           <div className="border border-line bg-shell px-4 py-4"><p className="text-[9px] uppercase tracking-wider text-slate-500">{deterministic ? 'Deterministic replay' : 'What-if replay'}</p><div className="mt-2"><OutcomeBadge value={replay.replay_result} /></div></div>
         </div>
+        {replay.original_result === replay.replay_result && <p className="mt-3 text-[10px] text-emerald-300/80">Recorded and replay outcomes match.</p>}
         <p className="mt-4 border-l border-line pl-3 text-xs leading-5 text-slate-300">{replay.summary}</p>
         <p className="mt-3 text-[10px] text-slate-600">Development replay fixture only. This record does not represent execution of the production agent or AI model.</p>
       </section>
 
       <section className="mb-6 border border-line bg-panel">
         <div className="border-b border-line px-4 py-3 sm:px-5"><h2 className="text-xs font-medium text-slate-300">Conditions</h2></div>
-        {replay.conditions.length ? <div className="overflow-x-auto"><table className="w-full min-w-[550px] text-left"><thead className="border-b border-line/70"><tr className="text-[9px] uppercase tracking-wider text-slate-600"><th className="px-4 py-3 font-medium">Condition</th><th className="px-4 py-3 font-medium">Original</th><th className="px-4 py-3 font-medium">Replay</th><th className="px-4 py-3 font-medium">Change</th></tr></thead><tbody className="divide-y divide-line/70">{replay.conditions.map((condition) => <tr key={condition.name} className="text-[10px]"><td className="px-4 py-3 text-slate-300">{condition.name}</td><td className="px-4 py-3 font-mono text-slate-500">{condition.original_value}</td><td className={`px-4 py-3 font-mono ${condition.changed ? 'text-amber-200' : 'text-slate-500'}`}>{condition.replay_value}</td><td className="px-4 py-3">{condition.changed ? <span className="text-amber-300">Changed</span> : <span className="text-slate-600">Unchanged</span>}</td></tr>)}</tbody></table></div> : <p className="px-5 py-6 text-xs text-slate-500">No condition details are attached to this replay fixture.</p>}
+        {replay.conditions.length ? <div className="space-y-2 p-4 sm:p-5">{replay.conditions.map((condition) => <article key={condition.name} className="min-w-0 border border-line/70 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-[11px] font-medium text-slate-300">{condition.name}</h3><span className={`text-[9px] ${condition.changed ? 'text-amber-300' : 'text-slate-600'}`}>{condition.changed ? 'Changed' : 'Unchanged'}</span></div><div className="mt-2 grid gap-2 sm:grid-cols-2"><div className="min-w-0"><p className="mb-1 text-[9px] uppercase tracking-wider text-slate-600">Original</p><p className="break-words font-mono text-[10px] text-slate-500">{condition.original_value}</p></div><div className="min-w-0"><p className="mb-1 text-[9px] uppercase tracking-wider text-slate-600">Replay</p><p className={`break-words font-mono text-[10px] ${condition.changed ? 'text-amber-200' : 'text-slate-500'}`}>{condition.replay_value}</p></div></div></article>)}</div> : <p className="px-5 py-6 text-xs text-slate-500">No condition details are attached to this replay fixture.</p>}
       </section>
 
       <section className="border border-line bg-panel">
         <div className="border-b border-line px-4 py-3 sm:px-5"><h2 className="text-xs font-medium text-slate-300">Differences</h2></div>
-        {replay.differences.length ? <ul className="divide-y divide-line/70">{replay.differences.map((difference) => <li key={`${difference.field}-${difference.original_value}-${difference.replay_value}`} className="border-l border-amber-400/25 px-4 py-3 sm:px-5"><p className="text-xs font-medium text-slate-300">{difference.field}</p><p className="mt-1 font-mono text-[10px] text-slate-400">{difference.original_value} <span className="text-slate-600">→</span> {difference.replay_value}</p><p className="mt-1 text-[10px] leading-4 text-slate-500">{difference.significance}</p></li>)}</ul> : <p className="inline-flex items-center gap-2 px-5 py-5 text-xs text-emerald-300/80"><Check size={14} />No material differences detected.</p>}
+        {replay.differences.length ? <ul className="divide-y divide-line/70">{replay.differences.map((difference) => <li key={`${difference.field}-${difference.original_value}-${difference.replay_value}`} className="border-l border-amber-400/25 px-4 py-3 sm:px-5"><p className="text-xs font-medium text-slate-300">{difference.field}</p><p className="mt-1 break-words font-mono text-[10px] text-slate-400">{difference.original_value} <span className="text-slate-600">→</span> {difference.replay_value}</p><p className="mt-1 text-[10px] leading-4 text-slate-500">{difference.significance}</p></li>)}</ul> : <p className="inline-flex items-center gap-2 px-5 py-5 text-xs text-emerald-300/80"><Check size={14} />No material differences detected.</p>}
       </section>
       <div className="mt-5 flex flex-wrap gap-4 text-[10px]"><Link to={`/decisions/${replay.decision_id}`} className="text-blue-300/80 hover:text-blue-200">View Decision Detail</Link><Link to="/replay" className="text-blue-300/80 hover:text-blue-200">Return to Replay Workspace</Link><Link to="/replay" className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-300"><RotateCcw size={11} />Start another replay</Link></div>
     </>
@@ -94,7 +96,7 @@ function ReplayDetail({ replay }: { replay: ReplayRun }) {
 }
 
 function Metadata({ label, value }: { label: string; value: string }) {
-  return <div className="min-w-0 px-4 py-3.5 sm:px-5"><p className="text-[9px] uppercase tracking-wider text-slate-600">{label}</p><p className="mt-1.5 truncate text-xs text-slate-300" title={value}>{value}</p></div>;
+  return <div className="min-w-0 border-b border-line px-4 py-3.5 last:border-b-0 sm:px-5 sm:odd:border-r sm:[&:nth-child(n+3)]:border-b-0 xl:border-b-0 xl:border-r xl:last:border-r-0"><p className="text-[9px] uppercase tracking-wider text-slate-600">{label}</p><p className="mt-1.5 break-words text-xs font-medium text-slate-200" title={value}>{value}</p></div>;
 }
 
 export default function ReplayDetailPage() {

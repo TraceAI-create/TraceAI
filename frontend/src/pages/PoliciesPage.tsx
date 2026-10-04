@@ -96,24 +96,24 @@ export default function PoliciesPage() {
     <>
       <PageHeader eyebrow="Audit / Governance" title="Policy Library" description="Review the governance policies used or evaluated during AI decisions, including their versions, rules, and evaluation history." />
 
-      <div className="mb-4 flex flex-col gap-3 border border-line bg-panel p-4 xl:flex-row xl:items-center">
+      <div className="mb-4 flex flex-col gap-3 border border-line bg-panel p-3 xl:flex-row xl:items-center xl:p-4">
         <label className="relative min-w-0 flex-1">
           <span className="sr-only">Search policy ID, name, version, or description</span>
           <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search ID, name, version, or description" className="h-9 w-full border border-line bg-shell pl-9 pr-9 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-accent/50" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search ID, name, version, or description" className="h-10 w-full border border-line bg-shell pl-9 pr-9 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-accent/60 focus-visible:ring-1 focus-visible:ring-accent/30 xl:h-9" />
           {search && <button type="button" onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-200"><X size={14} /></button>}
         </label>
-        <div className="flex flex-wrap gap-3">
-          <label className="flex items-center gap-2 text-[11px] text-slate-500">
+        <div className="grid gap-3 sm:grid-cols-2 xl:flex xl:flex-wrap">
+          <label className="flex min-w-0 items-center gap-2 text-[11px] text-slate-500">
             <span>Status</span>
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="h-9 min-w-32 border border-line bg-shell px-3 text-xs text-slate-300 outline-none focus:border-accent/50">
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="h-10 min-w-0 flex-1 border border-line bg-shell px-3 text-xs text-slate-300 outline-none focus:border-accent/60 focus-visible:ring-1 focus-visible:ring-accent/30 xl:h-9 xl:min-w-32 xl:flex-none">
               <option value="all">All statuses</option>
               {statuses.map((status) => <option key={status} value={status}>{humanize(status)}</option>)}
             </select>
           </label>
-          <label className="flex items-center gap-2 text-[11px] text-slate-500">
+          <label className="flex min-w-0 items-center gap-2 text-[11px] text-slate-500">
             <span>Type</span>
-            <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} className="h-9 min-w-36 border border-line bg-shell px-3 text-xs text-slate-300 outline-none focus:border-accent/50">
+            <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} className="h-10 min-w-0 flex-1 border border-line bg-shell px-3 text-xs text-slate-300 outline-none focus:border-accent/60 focus-visible:ring-1 focus-visible:ring-accent/30 xl:h-9 xl:min-w-36 xl:flex-none">
               <option value="all">All types</option>
               {policyTypes.map((type) => <option key={type} value={type}>{humanize(type)}</option>)}
             </select>
@@ -121,14 +121,14 @@ export default function PoliciesPage() {
         </div>
       </div>
 
-      <div className="mb-3 flex items-center justify-between gap-3 text-[11px] text-slate-500">
+      <div className="mb-3 flex flex-col gap-2 text-[11px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
         <span>{loading ? 'Loading policies…' : `${filteredPolicies.length} ${filteredPolicies.length === 1 ? 'policy' : 'policies'}`}</span>
         <span className="inline-flex items-center gap-1.5 text-amber-300/80"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" />Development mock data · not from the backend</span>
       </div>
 
       {loading ? <LoadingState /> : error ? <ErrorState message={error} onRetry={() => setReloadKey((key) => key + 1)} /> : filteredPolicies.length === 0 ? <EmptyState filtered={hasFilters} /> : (
         <>
-          <div className="hidden overflow-x-auto border border-line bg-panel md:block">
+          <div className="hidden border border-line bg-panel 2xl:block">
             <table className="w-full min-w-[900px] border-collapse text-left">
               <thead className="border-b border-line bg-white/[0.015]">
                 <tr className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
@@ -137,27 +137,27 @@ export default function PoliciesPage() {
               </thead>
               <tbody className="divide-y divide-line/70">
                 {filteredPolicies.map((policy) => (
-                  <tr key={policy.id} tabIndex={0} role="link" aria-label={`Open policy ${policy.name}`} onClick={() => openPolicy(policy.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openPolicy(policy.id); } }} className="cursor-pointer text-xs text-slate-300 outline-none hover:bg-white/[0.025] focus-visible:bg-white/[0.035]">
-                    <td className="max-w-[260px] px-4 py-3.5"><Link to={`/policies/${policy.id}`} onClick={(event) => event.stopPropagation()} className="block truncate font-medium text-slate-200 hover:text-blue-200">{policy.name}</Link><span className="mt-1 block truncate font-mono text-[9px] text-slate-600">{policy.id}</span></td>
-                    <td className="px-4 py-3.5 font-mono text-[11px] text-slate-300">v{policy.version}</td>
-                    <td className="px-4 py-3.5"><span className="inline-flex items-center gap-1.5 text-slate-400"><Scale size={12} />{humanize(policy.policy_type)}</span></td>
-                    <td className="px-4 py-3.5"><StatusBadge status={policy.status} /></td>
-                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-400">{formatDate(policy.effective_from)}</td>
-                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-400">{formatDate(policy.updated_at)}</td>
-                    <td className="px-4 py-3.5 font-mono tabular-nums text-slate-400">{policy.rules.length}</td>
-                    <td className="px-3 py-3.5 text-slate-600"><ChevronRight size={15} /></td>
+                  <tr key={policy.id} tabIndex={0} role="link" aria-label={`Open policy ${policy.name}`} onClick={() => openPolicy(policy.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openPolicy(policy.id); } }} className="group cursor-pointer text-xs text-slate-300 outline-none hover:bg-white/[0.035] focus-visible:bg-white/[0.045] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent/50">
+                    <td className="max-w-[280px] px-4 py-4"><Link to={`/policies/${policy.id}`} onClick={(event) => event.stopPropagation()} className="block line-clamp-2 font-medium leading-5 text-slate-200 outline-none hover:text-blue-200">{policy.name}</Link><span className="mt-1 block break-all font-mono text-[9px] leading-4 text-slate-600">{policy.id}</span></td>
+                    <td className="whitespace-nowrap px-4 py-4 font-mono text-[11px] text-slate-300">v{policy.version}</td>
+                    <td className="whitespace-nowrap px-4 py-4"><span className="inline-flex items-center gap-1.5 text-slate-400"><Scale size={12} />{humanize(policy.policy_type)}</span></td>
+                    <td className="whitespace-nowrap px-4 py-4"><StatusBadge status={policy.status} /></td>
+                    <td className="whitespace-nowrap px-4 py-4 text-slate-400">{formatDate(policy.effective_from)}</td>
+                    <td className="whitespace-nowrap px-4 py-4 text-slate-400">{formatDate(policy.updated_at)}</td>
+                    <td className="px-4 py-4 text-right font-mono tabular-nums text-slate-400">{policy.rules.length}</td>
+                    <td className="px-3 py-4 text-slate-600 transition-colors group-hover:text-blue-300"><ChevronRight size={15} /></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="space-y-2 md:hidden">
+          <div className="space-y-2 2xl:hidden">
             {filteredPolicies.map((policy) => {
               const TypeIcon: LucideIcon = policy.policy_type === 'ACCOUNT_SAFETY' ? ShieldAlert : BookOpenText;
               return (
-                <Link key={policy.id} to={`/policies/${policy.id}`} className="block border border-line bg-panel p-4 outline-none hover:border-slate-600 focus-visible:border-accent/50">
-                  <div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3"><span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center border border-line bg-white/[0.02] text-slate-400"><TypeIcon size={15} /></span><span className="min-w-0"><span className="block text-xs font-medium text-slate-200">{policy.name}</span><span className="mt-1 block break-all font-mono text-[9px] text-slate-600">{policy.id}</span></span></div><StatusBadge status={policy.status} /></div>
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-line pt-3 text-[10px] text-slate-500"><span className="font-mono text-slate-400">v{policy.version}</span><span>{humanize(policy.policy_type)}</span><span>{policy.rules.length} rules</span><span>Updated {formatDate(policy.updated_at)}</span></div>
+                <Link key={policy.id} to={`/policies/${policy.id}`} className="group block border border-line bg-panel p-4 outline-none transition-colors hover:border-slate-600 hover:bg-white/[0.015] focus-visible:border-accent/50 focus-visible:ring-1 focus-visible:ring-accent/40">
+                  <div className="flex flex-wrap items-start justify-between gap-3"><div className="flex min-w-0 flex-1 items-start gap-3"><span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center border border-line bg-white/[0.02] text-slate-400"><TypeIcon size={15} /></span><span className="min-w-0"><span className="block text-xs font-medium leading-5 text-slate-200">{policy.name}</span><span className="mt-1 block break-all font-mono text-[9px] text-slate-600">{policy.id}</span></span></div><span className="flex shrink-0 items-center gap-2"><StatusBadge status={policy.status} /><ChevronRight size={14} className="text-slate-600 transition-colors group-hover:text-blue-300" /></span></div>
+                  <dl className="mt-3 grid gap-x-4 gap-y-2 border-t border-line pt-3 text-[10px] sm:grid-cols-2"><div><dt className="text-[9px] uppercase tracking-wider text-slate-600">Version / type</dt><dd className="mt-0.5"><span className="font-mono text-slate-300">v{policy.version}</span><span className="mx-1.5 text-slate-700">·</span><span className="text-slate-400">{humanize(policy.policy_type)}</span></dd></div><div><dt className="text-[9px] uppercase tracking-wider text-slate-600">Rules / effective</dt><dd className="mt-0.5 text-slate-400">{policy.rules.length} rules · {formatDate(policy.effective_from)}</dd></div><div className="sm:col-span-2"><dt className="text-[9px] uppercase tracking-wider text-slate-600">Updated</dt><dd className="mt-0.5 text-slate-400">{formatDate(policy.updated_at)}</dd></div></dl>
                 </Link>
               );
             })}

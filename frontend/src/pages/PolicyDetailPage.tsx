@@ -58,7 +58,7 @@ function PolicyRules({ rules }: { rules: Policy['rules'] }) {
             <li key={rule.id} className="grid gap-3 px-4 py-4 sm:grid-cols-[32px_minmax(0,1fr)] sm:px-5">
               <span className="font-mono text-[10px] text-slate-600">{String(index + 1).padStart(2, '0')}</span>
               <div className="min-w-0">
-                <div className="flex flex-wrap items-start justify-between gap-2"><h3 className="text-sm font-medium text-slate-200">{rule.name}</h3><span className="font-mono text-[9px] text-slate-600">{rule.id}</span></div>
+                <div className="flex flex-wrap items-start justify-between gap-2"><h3 className="text-sm font-medium text-slate-200">{rule.name}</h3><span className="break-all font-mono text-[9px] text-slate-600">{rule.id}</span></div>
                 <p className="mt-1.5 text-xs leading-5 text-muted">{rule.description}</p>
                 <dl className="mt-3 grid gap-3 border-l border-line pl-3 sm:grid-cols-2">
                   <div><dt className="mb-1 text-[9px] uppercase tracking-wider text-slate-600">Condition</dt><dd className="break-words font-mono text-[10px] leading-4 text-slate-300">{rule.condition}</dd></div>
@@ -79,7 +79,7 @@ function EvaluationEntry({ evaluation }: { evaluation: PolicyEvaluation }) {
       <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5">
         <div className="min-w-0">
           <p className="break-all font-mono text-[10px] text-slate-500">{evaluation.id}</p>
-          <Link to={`/decisions/${evaluation.decision_id}`} className="mt-2 inline-flex items-center gap-1.5 break-all font-mono text-[11px] text-blue-300/90 hover:text-blue-200">Decision {evaluation.decision_id}</Link>
+          <Link to={`/decisions/${evaluation.decision_id}`} className="mt-2 inline-flex items-center gap-1.5 break-all font-mono text-[11px] text-blue-300/90 outline-none hover:text-blue-200 focus-visible:ring-1 focus-visible:ring-accent/50">Decision {evaluation.decision_id}</Link>
           <p className="mt-1 text-[10px] text-slate-500">Policy version <span className="font-mono text-slate-400">{evaluation.policy_version}</span></p>
         </div>
         <div className="flex shrink-0 items-center gap-3 sm:flex-col sm:items-end">
@@ -94,16 +94,16 @@ function EvaluationEntry({ evaluation }: { evaluation: PolicyEvaluation }) {
             <summary className="flex cursor-pointer list-none items-center gap-2 text-[10px] text-slate-500 outline-none hover:text-slate-300 focus-visible:text-slate-200">
               <ChevronDown size={12} className="transition-transform group-open:rotate-180" />Condition results ({evaluation.conditions.length})
             </summary>
-            <div className="mt-3 overflow-x-auto">
-              <table className="w-full min-w-[480px] text-left">
-                <thead><tr className="text-[9px] uppercase tracking-wider text-slate-600"><th className="pb-2 pr-3 font-medium">Condition</th><th className="pb-2 pr-3 font-medium">Expected</th><th className="pb-2 pr-3 font-medium">Actual</th><th className="pb-2 font-medium">Result</th></tr></thead>
-                <tbody className="divide-y divide-line/60">
-                  {evaluation.conditions.map((condition) => (
-                    <tr key={condition.name} className="text-[10px] text-slate-400"><td className="py-2 pr-3 text-slate-300">{condition.name}</td><td className="py-2 pr-3 font-mono">{condition.expected}</td><td className="py-2 pr-3 font-mono">{condition.actual}</td><td className="py-2"><ResultBadge result={condition.result} /></td></tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <dl className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+              {evaluation.conditions.map((condition) => (
+                <div key={condition.name} className="grid min-w-0 gap-x-3 gap-y-2 border border-line/70 bg-shell/50 p-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] xl:items-center">
+                  <div className="min-w-0"><dt className="text-[9px] uppercase tracking-wider text-slate-600">Condition</dt><dd className="mt-1 break-words text-[10px] text-slate-300">{condition.name}</dd></div>
+                  <div className="min-w-0"><dt className="text-[9px] uppercase tracking-wider text-slate-600">Expected</dt><dd className="mt-1 break-words font-mono text-[10px] text-slate-400">{condition.expected}</dd></div>
+                  <div className="min-w-0"><dt className="text-[9px] uppercase tracking-wider text-slate-600">Actual</dt><dd className="mt-1 break-words font-mono text-[10px] text-slate-400">{condition.actual}</dd></div>
+                  <div className="sm:col-span-2 xl:col-span-1"><dt className="mb-1 text-[9px] uppercase tracking-wider text-slate-600 xl:sr-only">Result</dt><dd><ResultBadge result={condition.result} /></dd></div>
+                </div>
+              ))}
+            </dl>
           </details>
         )}
       </div>
@@ -160,8 +160,8 @@ export default function PolicyDetailPage() {
 
   return (
     <>
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <Link to="/policies" className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-slate-100"><ArrowLeft size={14} />Back to Policy Library</Link>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <Link to="/policies" className="inline-flex items-center gap-2 text-xs text-slate-400 outline-none hover:text-slate-100 focus-visible:ring-1 focus-visible:ring-accent/50"><ArrowLeft size={14} />Back to Policy Library</Link>
         <span className="inline-flex items-center gap-1.5 text-[9px] uppercase tracking-wider text-amber-300/80"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" />Development mock data</span>
       </div>
       {loading ? <LoadingState /> : error ? <ErrorState message={error} /> : policy ? (
@@ -170,7 +170,8 @@ export default function PolicyDetailPage() {
             <div className="min-w-0">
               <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.16em] text-accent/80">Governance / Policy detail</p>
               <div className="flex flex-wrap items-center gap-3"><h1 className="text-xl font-semibold tracking-tight text-slate-100 sm:text-2xl">{policy.name}</h1><ResultBadge result={policy.status} /></div>
-              <p className="mt-2 break-all font-mono text-[10px] text-slate-500">{policy.id}</p>
+              <p className="mt-2 break-all font-mono text-[10px] leading-5 text-slate-400">{policy.id}</p>
+              <p className="mt-1 text-[10px] text-slate-500">Policy version <span className="font-mono text-slate-300">{policy.version}</span><span className="mx-1.5 text-slate-700">·</span>{humanize(policy.policy_type)}</p>
             </div>
             <span className="inline-flex items-center gap-2 border border-line bg-panel px-3 py-2 font-mono text-xs text-slate-300"><BookOpenText size={14} className="text-slate-500" />v{policy.version}</span>
           </div>

@@ -141,7 +141,7 @@ export default function EvidencePage() {
         description="Inspect evidence captured or referenced during AI decisions, and trace each artifact back to the decisions that used it."
       />
 
-      <div className="mb-4 flex flex-col gap-3 border border-line bg-panel p-4 sm:flex-row sm:items-center">
+      <div className="mb-4 flex flex-col gap-3 border border-line bg-panel p-3 sm:flex-row sm:items-center sm:p-4">
         <label className="relative min-w-0 flex-1">
           <span className="sr-only">Search evidence ID, title, source, or type</span>
           <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -149,7 +149,7 @@ export default function EvidencePage() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search ID, title, source, or type"
-            className="h-9 w-full border border-line bg-shell pl-9 pr-9 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-accent/50"
+            className="h-10 w-full border border-line bg-shell pl-9 pr-9 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-accent/60 focus-visible:ring-1 focus-visible:ring-accent/30 sm:h-9"
           />
           {search && (
             <button type="button" onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-200">
@@ -157,16 +157,16 @@ export default function EvidencePage() {
             </button>
           )}
         </label>
-        <label className="flex items-center gap-2 text-[11px] text-slate-500">
+        <label className="flex w-full items-center gap-2 text-[11px] text-slate-500 sm:w-auto">
           <span className="whitespace-nowrap">Type</span>
-          <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} className="h-9 min-w-40 border border-line bg-shell px-3 text-xs text-slate-300 outline-none focus:border-accent/50">
+          <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} className="h-10 min-w-0 flex-1 border border-line bg-shell px-3 text-xs text-slate-300 outline-none focus:border-accent/60 focus-visible:ring-1 focus-visible:ring-accent/30 sm:h-9 sm:min-w-40 sm:flex-none">
             <option value="all">All types</option>
             {evidenceTypes.map((type) => <option key={type} value={type}>{humanize(type)}</option>)}
           </select>
         </label>
       </div>
 
-      <div className="mb-3 flex items-center justify-between gap-3 text-[11px] text-slate-500">
+      <div className="mb-3 flex flex-col gap-2 text-[11px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
         <span>{loading ? 'Loading records…' : `${filteredEvidence.length} ${filteredEvidence.length === 1 ? 'record' : 'records'}`}</span>
         <span className="inline-flex items-center gap-1.5 text-amber-300/80">
           <span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> Development mock data · not from the backend
@@ -179,7 +179,7 @@ export default function EvidencePage() {
         <EmptyState filtered={hasFilters} />
       ) : (
         <>
-          <div className="hidden overflow-x-auto border border-line bg-panel md:block">
+          <div className="hidden border border-line bg-panel 2xl:block">
             <table className="w-full min-w-[900px] border-collapse text-left">
               <thead className="border-b border-line bg-white/[0.015]">
                 <tr className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
@@ -206,30 +206,30 @@ export default function EvidencePage() {
                         openEvidence(item.id);
                       }
                     }}
-                    className="cursor-pointer text-xs text-slate-300 outline-none hover:bg-white/[0.025] focus-visible:bg-white/[0.035]"
+                    className="group cursor-pointer text-xs text-slate-300 outline-none hover:bg-white/[0.035] focus-visible:bg-white/[0.045] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent/50"
                   >
-                    <td className="max-w-[260px] px-4 py-3.5">
-                      <Link to={`/evidence/${item.id}`} onClick={(event) => event.stopPropagation()} className="block truncate font-medium text-slate-200 hover:text-blue-200">{item.title}</Link>
-                      <span className="mt-1 block truncate font-mono text-[9px] text-slate-600">{item.id}</span>
+                    <td className="max-w-[280px] px-4 py-4">
+                      <Link to={`/evidence/${item.id}`} onClick={(event) => event.stopPropagation()} className="block line-clamp-2 font-medium leading-5 text-slate-200 outline-none hover:text-blue-200">{item.title}</Link>
+                      <span className="mt-1 block break-all font-mono text-[9px] leading-4 text-slate-600">{item.id}</span>
                     </td>
-                    <td className="px-4 py-3.5"><TypeBadge type={item.evidence_type} /></td>
-                    <td className="max-w-[170px] truncate px-4 py-3.5 text-slate-400" title={item.source}>{item.source}</td>
-                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-400">{formatTimestamp(item.retrieved_at)}</td>
-                    <td className="px-4 py-3.5 text-center font-mono tabular-nums text-slate-400">{item.linked_decision_ids.length}</td>
-                    <td className="px-4 py-3.5 font-mono text-[10px] text-slate-500" title={item.hash ?? undefined}>{shortHash(item.hash)}</td>
-                    <td className="px-3 py-3.5 text-slate-600"><ChevronRight size={15} /></td>
+                    <td className="whitespace-nowrap px-4 py-4"><TypeBadge type={item.evidence_type} /></td>
+                    <td className="max-w-[170px] px-4 py-4"><span className="block truncate text-slate-400" title={item.source}>{item.source}</span></td>
+                    <td className="whitespace-nowrap px-4 py-4 text-slate-400">{formatTimestamp(item.retrieved_at)}</td>
+                    <td className="px-4 py-4 text-center font-mono tabular-nums text-slate-400">{item.linked_decision_ids.length}</td>
+                    <td className="whitespace-nowrap px-4 py-4 font-mono text-[10px] text-slate-500" title={item.hash ?? undefined}>{shortHash(item.hash)}</td>
+                    <td className="px-3 py-4 text-slate-600 transition-colors group-hover:text-blue-300"><ChevronRight size={15} /></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          <div className="space-y-2 md:hidden">
+          <div className="space-y-2 2xl:hidden">
             {filteredEvidence.map((item) => {
               const Icon = evidenceTypeIcons[item.evidence_type] ?? FileSearch;
               return (
-                <Link key={item.id} to={`/evidence/${item.id}`} className="block border border-line bg-panel p-4 outline-none hover:border-slate-600 focus-visible:border-accent/50">
-                  <div className="flex items-start justify-between gap-3">
+                <Link key={item.id} to={`/evidence/${item.id}`} className="group block border border-line bg-panel p-4 outline-none transition-colors hover:border-slate-600 hover:bg-white/[0.015] focus-visible:border-accent/50 focus-visible:ring-1 focus-visible:ring-accent/40">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex min-w-0 items-start gap-3">
                       <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center border border-line bg-white/[0.02] text-slate-400"><Icon size={15} /></span>
                       <span className="min-w-0">
@@ -237,13 +237,14 @@ export default function EvidencePage() {
                         <span className="mt-1 block break-all font-mono text-[9px] text-slate-600">{item.id}</span>
                       </span>
                     </div>
-                    <TypeBadge type={item.evidence_type} />
+                    <span className="flex shrink-0 items-center gap-2"><TypeBadge type={item.evidence_type} /><ChevronRight size={14} className="text-slate-600 transition-colors group-hover:text-blue-300" /></span>
                   </div>
-                  <div className="mt-3 flex flex-wrap justify-between gap-x-4 gap-y-2 border-t border-line pt-3 text-[10px] text-slate-500">
-                    <span className="truncate">{item.source}</span>
-                    <span>{item.linked_decision_ids.length} linked</span>
-                    <span className="font-mono">{shortHash(item.hash)}</span>
-                  </div>
+                  <dl className="mt-3 grid gap-x-4 gap-y-2 border-t border-line pt-3 text-[10px] sm:grid-cols-2">
+                    <div className="min-w-0"><dt className="text-[9px] uppercase tracking-wider text-slate-600">Source</dt><dd className="mt-0.5 break-words text-slate-400">{item.source}</dd></div>
+                    <div><dt className="text-[9px] uppercase tracking-wider text-slate-600">Retrieved</dt><dd className="mt-0.5 text-slate-400">{formatTimestamp(item.retrieved_at)}</dd></div>
+                    <div><dt className="text-[9px] uppercase tracking-wider text-slate-600">Linked decisions</dt><dd className="mt-0.5 font-mono text-slate-400">{item.linked_decision_ids.length}</dd></div>
+                    <div className="min-w-0"><dt className="text-[9px] uppercase tracking-wider text-slate-600">Hash</dt><dd className="mt-0.5 truncate font-mono text-slate-500" title={item.hash ?? undefined}>{shortHash(item.hash)}</dd></div>
+                  </dl>
                 </Link>
               );
             })}

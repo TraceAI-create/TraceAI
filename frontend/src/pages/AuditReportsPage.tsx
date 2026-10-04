@@ -53,10 +53,13 @@ export default function AuditReportsPage() {
           <ul className="divide-y divide-line">
             {reports.map((report) => (
               <li key={report.decision.id}>
-                <Link to={`/audit-reports/${report.decision.id}`} className="grid gap-3 px-4 py-4 outline-none hover:bg-white/[0.02] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent/50 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] sm:items-center sm:px-5">
+                <Link to={`/audit-reports/${report.decision.id}`} className="group grid gap-4 px-4 py-4 outline-none transition-colors hover:bg-white/[0.025] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent/50 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto] sm:items-center sm:px-5 sm:py-5">
                   <div className="min-w-0"><p className="text-xs font-medium text-slate-200">{report.decision.agent_id}</p><p className="mt-1 break-all font-mono text-[10px] text-slate-500">{report.decision.id}</p><p className="mt-1 text-[10px] text-slate-600">v{report.decision.agent_version}</p></div>
-                  <div className="flex flex-wrap items-center gap-2"><StatusBadge value={report.decision.status} />{report.final_outcome && <span className="text-[10px] text-slate-500">Outcome: {report.final_outcome.value.replace(/_/g, ' ')}</span>}</div>
-                  <div className="flex items-center justify-between gap-3 text-[10px] text-slate-500 sm:justify-end"><span>{formatDate(report.decision.created_at)}</span><span className="inline-flex items-center gap-1 text-blue-300/80">View report <ArrowRight size={12} /></span></div>
+                  <div className="flex flex-col items-start gap-2">
+                    <div className="flex flex-wrap items-center gap-2"><span className="text-[9px] uppercase tracking-wider text-slate-600">Decision status</span><StatusBadge value={report.decision.status} /></div>
+                    {report.final_outcome && <div className="flex flex-wrap items-center gap-2"><span className="text-[9px] uppercase tracking-wider text-slate-600">Recorded outcome</span><span className="text-[10px] text-slate-400">{report.final_outcome.value.replace(/_/g, ' ')}</span></div>}
+                  </div>
+                  <div className="flex items-center justify-between gap-3 text-[10px] text-slate-500 sm:justify-end"><span>{formatDate(report.decision.created_at)}</span><span className="inline-flex items-center gap-1 text-blue-300/80 transition-colors group-hover:text-blue-200">View report <ArrowRight size={12} /></span></div>
                 </Link>
               </li>
             ))}
