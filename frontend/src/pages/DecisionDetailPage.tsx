@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import {
   ArrowLeft,
+  AlertTriangle,
   BrainCircuit,
   Check,
   ChevronDown,
@@ -10,8 +11,9 @@ import {
   FileSearch,
   Fingerprint,
   LoaderCircle,
+  LockKeyhole,
   Scale,
-  ShieldCheck,
+
   Sparkles,
   Waypoints,
   type LucideIcon,
@@ -19,8 +21,12 @@ import {
 import { Link, useParams } from 'react-router-dom';
 import type { AuditEvent, DecisionDetail } from '../types/decisionDetail';
 import type { Policy, PolicyEvaluation } from '../types/policy';
+import type { IntegrityInfo } from '../types/integrity';
+import type { ReviewAction, ReviewActionKind } from '../types/review';
 import { getDecisionDetail } from '../services/decisionDetailService';
 import { getEvaluationsForDecision, getPolicyById } from '../services/policyService';
+import { getIntegrityForDecision } from '../services/integrityService';
+import { getReviewsForDecision, submitMockReview } from '../services/reviewService';
 
 const eventPresentation: Record<string, { title: string; description: string; icon: LucideIcon }> = {
   INPUT_RECEIVED: {
@@ -68,7 +74,8 @@ function humanize(value: string): string {
     .join(' ');
 }
 
-function formatTimestamp(value: string): string {
+function formatTimestamp(value: string | null): string {
+  if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Invalid timestamp';
   return new Intl.DateTimeFormat(undefined, {
@@ -83,12 +90,12 @@ function formatTimestamp(value: string): string {
 
 function statusStyle(status: string): string {
   const normalized = status.toLowerCase();
-  if (normalized.startsWith('reviewed') || normalized === 'approved' || normalized === 'passed') {
+  if (normalized.startsWith('reviewed') || normalized === 'approved' || normalized === 'passed' || normalized === 'chain_intact') {
     return 'border-emerald-400/20 bg-emerald-400/[0.08] text-emerald-300';
   }
   if (normalized.includes('reject') || normalized === 'failed') return 'border-rose-400/20 bg-rose-400/[0.08] text-rose-300';
-  if (normalized.includes('challeng') || normalized === 'overridden') return 'border-amber-400/20 bg-amber-400/[0.08] text-amber-300';
-  if (normalized === 'created' || normalized === 'running') {
+  if (normalized.includes('challeng') || normalized === 'overridden' || normalized === 'requested_review' || normalized === 'chain_warning') return 'border-amber-400/20 bg-amber-400/[0.08] text-amber-300';
+  if (normalized === 'created' || normalized === 'running' || normalized === 'verification_available') {
     return 'border-sky-400/20 bg-sky-400/[0.08] text-sky-300';
   }
   return 'border-slate-500/25 bg-slate-500/[0.08] text-slate-300';
@@ -176,6 +183,168 @@ function SupportingPanel({ title, icon: Icon, children }: { title: string; icon:
       </div>
       <div className="px-4 py-3.5">{children}</div>
     </section>
+  );
+}
+
+function ReviewPanel({ decisionId }: { decisionId: string }) {
+  const [reviews, setReviews] = useState<ReviewAction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [action, setAction] = useState<ReviewActionKind | ''>('');
+  const [comment, setComment] = useState('');
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    getReviewsForDecision(decisionId)
+      .then((items) => { if (active) setReviews(items); })
+      .catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : 'Could not load review history.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [decisionId]);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setValidationError(null);
+    setSubmitted(false);
+    if (!action) {
+      setValidationError('Choose a review action before submitting.');
+      return;
+    }
+    if ((action === 'REJECTED' || action === 'OVERRIDDEN') && !comment.trim()) {
+      setValidationError('A comment is required for Reject and Override actions.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const review = await submitMockReview({ decision_id: decisionId, action, comment: comment || null });
+      setReviews((current) => [review, ...current].sort((a, b) => b.created_at.localeCompare(a.created_at)));
+      setAction('');
+      setComment('');
+      setSubmitted(true);
+    } catch (cause) {
+      setValidationError(cause instanceof Error ? cause.message : 'The mock review could not be added.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const latestReview = reviews[0];
+
+  return (
+    <SupportingPanel title="Human review" icon={ClipboardList}>
+      <div className="mb-4 border border-amber-400/15 bg-amber-400/[0.035] px-3 py-2.5 text-[10px] leading-4 text-amber-200/80">Development mock review — not persisted to the backend.</div>
+      {loading ? <p role="status" className="text-[11px] text-slate-500">Loading review history…</p> : error ? (
+        <p role="alert" className="text-[11px] text-rose-300">Could not load reviews: {error}</p>
+      ) : latestReview ? (
+        <>
+          <div className="border-b border-line pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2"><StatusBadge status={latestReview.action} /><span className="text-[10px] text-slate-500">{formatTimestamp(latestReview.created_at)}</span></div>
+            <p className="mt-2 text-[10px] text-slate-500">Reviewer <span className="font-mono text-slate-300">{latestReview.reviewer}</span></p>
+            <p className="mt-2 text-[11px] leading-5 text-slate-300">{latestReview.comment || 'No comment recorded.'}</p>
+          </div>
+          <details className="group mt-3" open={reviews.length > 1}>
+            <summary className="flex cursor-pointer list-none items-center gap-2 text-[10px] text-slate-400 outline-none hover:text-slate-200"><ChevronDown size={12} className="transition-transform group-open:rotate-180" />Review history <span className="font-mono text-slate-600">{reviews.length}</span></summary>
+            <ol className="mt-3 space-y-3 border-l border-line pl-3">
+              {reviews.map((review) => (
+                <li key={review.id} className="relative">
+                  <div className="flex flex-wrap items-center justify-between gap-2"><StatusBadge status={review.action} /><span className="text-[9px] text-slate-600">{formatTimestamp(review.created_at)}</span></div>
+                  <p className="mt-1.5 text-[10px] text-slate-500">{review.reviewer}</p>
+                  <p className="mt-1 text-[10px] leading-4 text-slate-400">{review.comment || 'No comment recorded.'}</p>
+                </li>
+              ))}
+            </ol>
+          </details>
+        </>
+      ) : <p className="mb-4 text-[11px] text-slate-500">No human review recorded.</p>}
+
+      {!loading && !error && (
+        <form onSubmit={handleSubmit} className="mt-4 border-t border-line pt-4">
+          <p className="mb-3 text-[10px] font-medium uppercase tracking-wider text-slate-500">Add development review</p>
+          <label className="mb-3 block text-[10px] text-slate-500">Review action
+            <select value={action} onChange={(event) => { setAction(event.target.value as ReviewActionKind | ''); setValidationError(null); }} className="mt-1.5 h-9 w-full border border-line bg-shell px-3 text-xs text-slate-300 outline-none focus:border-accent/50">
+              <option value="">Choose an action</option>
+              <option value="APPROVED">Approve</option>
+              <option value="REJECTED">Reject</option>
+              <option value="OVERRIDDEN">Override</option>
+              <option value="REQUESTED_REVIEW">Request review</option>
+            </select>
+          </label>
+          <label className="block text-[10px] text-slate-500">Comment {(action === 'REJECTED' || action === 'OVERRIDDEN') && <span className="text-rose-300">· required</span>}
+            <textarea value={comment} onChange={(event) => { setComment(event.target.value); setValidationError(null); }} rows={3} maxLength={500} placeholder="Add reviewer context…" className="mt-1.5 w-full resize-y border border-line bg-shell px-3 py-2 text-xs leading-5 text-slate-300 outline-none placeholder:text-slate-600 focus:border-accent/50" />
+          </label>
+          {validationError && <p role="alert" className="mt-2 text-[10px] text-rose-300">{validationError}</p>}
+          {submitted && <p role="status" className="mt-2 text-[10px] text-emerald-300/80">Mock review added to this in-memory development session only.</p>}
+          <button type="submit" disabled={submitting} className="mt-3 inline-flex h-9 items-center gap-2 border border-line px-3 text-[11px] text-slate-300 hover:border-slate-600 hover:text-white disabled:opacity-50">
+            {submitting ? <LoaderCircle size={13} className="animate-spin" /> : <Check size={13} />}Submit mock review
+          </button>
+        </form>
+      )}
+    </SupportingPanel>
+  );
+}
+
+function truncateHash(hash: string | null): string {
+  if (!hash) return '—';
+  return hash.length > 24 ? `${hash.slice(0, 12)}…${hash.slice(-8)}` : hash;
+}
+
+function IntegrityPanel({ decisionId }: { decisionId: string }) {
+  const [integrity, setIntegrity] = useState<IntegrityInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    getIntegrityForDecision(decisionId)
+      .then((info) => { if (active) setIntegrity(info); })
+      .catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : 'Could not load integrity information.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [decisionId]);
+
+  return (
+    <SupportingPanel title="Audit integrity" icon={Fingerprint}>
+      <div className="mb-3 border border-amber-400/15 bg-amber-400/[0.035] px-3 py-2.5 text-[10px] leading-4 text-amber-200/80">Development integrity fixtures. The frontend does not independently verify the cryptographic chain.</div>
+      {loading ? <p role="status" className="text-[11px] text-slate-500">Loading integrity information…</p> : error ? (
+        <p role="alert" className="text-[11px] text-rose-300">Could not load integrity information: {error}</p>
+      ) : integrity ? (
+        <>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[10px] text-slate-500">Chain status</span><StatusBadge status={integrity.chain_status} />
+          </div>
+          {integrity.chain_status === 'CHAIN_WARNING' && <p className="mb-3 flex items-start gap-2 text-[10px] leading-4 text-amber-200/80"><AlertTriangle size={12} className="mt-0.5 shrink-0" />The fixture reports a chain warning; this frontend has not independently checked it.</p>}
+          <dl className="grid grid-cols-2 gap-x-3 gap-y-3 border-b border-line pb-3">
+            <div><dt className="mb-1 text-[9px] uppercase tracking-wider text-slate-600">Event count</dt><dd className="font-mono text-xs text-slate-300">{integrity.event_count}</dd></div>
+            <div><dt className="mb-1 text-[9px] uppercase tracking-wider text-slate-600">Events hashed</dt><dd className="font-mono text-xs text-slate-300">{integrity.events_hashed}</dd></div>
+            <div><dt className="mb-1 text-[9px] uppercase tracking-wider text-slate-600">Algorithm</dt><dd className="font-mono text-[10px] text-slate-400">{integrity.hash_algorithm ?? '—'}</dd></div>
+            <div><dt className="mb-1 text-[9px] uppercase tracking-wider text-slate-600">Source status</dt><dd><StatusBadge status={integrity.verification_status} /></dd></div>
+          </dl>
+          <div className="mt-3"><p className="mb-1 text-[9px] uppercase tracking-wider text-slate-600">Root hash</p><p className="break-all font-mono text-[10px] text-slate-400" title={integrity.root_hash ?? undefined}>{truncateHash(integrity.root_hash)}</p></div>
+          <p className="mt-3 text-[9px] leading-4 text-slate-600">Integrity data shows the recorded hash chain supplied by the audit system. The current frontend does not independently perform cryptographic verification.</p>
+          <details className="group mt-3 border-t border-line pt-3">
+            <summary className="flex cursor-pointer list-none items-center gap-2 text-[10px] text-slate-400 outline-none hover:text-slate-200"><ChevronDown size={12} className="transition-transform group-open:rotate-180" />Inspect integrity chain <span className="font-mono text-slate-600">{integrity.events.length} records</span></summary>
+            <div className="mt-3 space-y-3">
+              <HashValue label="Full root hash" value={integrity.root_hash} />
+              {integrity.events.slice().sort((a, b) => a.sequence - b.sequence).map((event) => (
+                <div key={event.event_id} className="border-l border-line pl-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[10px] font-medium text-slate-300">Event {event.sequence} · {humanize(event.event_type)}</p><span className="font-mono text-[9px] text-slate-600">{event.event_id}</span></div>
+                  <div className="mt-2 space-y-2"><HashValue label="Event hash · fixture value" value={event.hash} /><HashValue label="Previous hash · fixture value" value={event.previous_hash} /></div>
+                </div>
+              ))}
+              {integrity.last_verified_at && <p className="text-[9px] text-slate-600">Source last-verified timestamp: {formatTimestamp(integrity.last_verified_at)}</p>}
+            </div>
+          </details>
+        </>
+      ) : (
+        <div className="flex items-start gap-2 text-[11px] leading-5 text-slate-500"><LockKeyhole size={13} className="mt-0.5 shrink-0" />Integrity information unavailable for this decision in the current development fixtures.</div>
+      )}
+    </SupportingPanel>
   );
 }
 
@@ -313,30 +482,8 @@ function DecisionContent({ decision }: { decision: DecisionDetail }) {
             ) : <p className="text-[11px] text-slate-500">No policy evaluation recorded.</p>}
           </SupportingPanel>
 
-          <SupportingPanel title="Integrity" icon={Fingerprint}>
-            <div className="flex items-center gap-2 text-xs text-slate-300">
-              <ShieldCheck size={14} className="text-slate-400" />
-              Integrity information available
-            </div>
-            <p className="mt-2 text-[10px] leading-4 text-slate-600">Displayed hash metadata is mock data. The frontend has not performed cryptographic verification.</p>
-            <div className="mt-3 space-y-3 border-t border-line pt-3">
-              <HashValue label="Root hash" value={decision.root_hash} />
-              <p className="text-[10px] text-slate-500">Recorded events <span className="ml-1 font-mono text-slate-300">{decision.event_count}</span></p>
-            </div>
-          </SupportingPanel>
-
-          <SupportingPanel title="Human review" icon={ClipboardList}>
-            {decision.human_review ? (
-              <>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <StatusBadge status={decision.human_review.action} />
-                  <span className="text-[10px] text-slate-500">{formatTimestamp(decision.human_review.created_at)}</span>
-                </div>
-                <p className="mt-2 text-[10px] text-slate-500">Reviewer <span className="font-mono text-slate-400">{decision.human_review.reviewer_id}</span></p>
-                {decision.human_review.comments && <p className="mt-2 text-[11px] leading-5 text-slate-400">{decision.human_review.comments}</p>}
-              </>
-            ) : <p className="text-[11px] text-slate-500">No review recorded</p>}
-          </SupportingPanel>
+          <ReviewPanel decisionId={decision.id} />
+          <IntegrityPanel decisionId={decision.id} />
         </aside>
       </div>
     </>
