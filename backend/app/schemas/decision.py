@@ -81,3 +81,31 @@ class IntegrityResponse(BaseModel):
     reason: str | None = None
     event_id: uuid.UUID | None = None
     sequence_number: int | None = None
+
+
+class DashboardStatsResponse(BaseModel):
+    """Aggregated statistics for the dashboard view."""
+
+    decisions: list[DecisionSummaryResponse]
+    evidence_count: int
+    policy_evaluation_count: int
+    decisions_with_review_history: int
+    decisions_without_review_history: int
+    integrity_available_count: int
+    intact_chain_count: int
+    warning_chain_count: int
+    integrity_unavailable_count: int
+
+
+class AuditReportItemResponse(BaseModel):
+    """Concise item for the audit reports list view."""
+
+    decision_id: uuid.UUID
+    agent_id: str
+    agent_version: str
+    status: str
+    created_at: datetime
+    root_hash: str | None
+    event_count: int
+    final_outcome: str | None = None
+

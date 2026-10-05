@@ -1,10 +1,11 @@
 """API endpoints for storing, retrieving, and downloading evidence artifacts."""
 
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
+from app.db.models import Evidence
 from app.schemas.evidence import EvidenceCreate, EvidenceResponse
 from app.services.evidence_service import (
     get_evidence,
@@ -30,6 +31,25 @@ def upload_evidence(
 ):
     """Store evidence in content-addressable storage and return its metadata."""
     return store_evidence(db, data)
+
+
+@router.get(
+    "",
+    response_model=list[EvidenceResponse],
+)
+def list_evidence(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """List all stored evidence artifacts, newest first."""
+    return (
+        db.query(Evidence)
+        .order_by(Evidence.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 @router.get(

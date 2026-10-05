@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.db.models import Decision
 from app.schemas.decision import (
+    AuditReportItemResponse,
+    DashboardStatsResponse,
     DecisionCreate,
     DecisionResponse,
     DecisionSummaryResponse,
@@ -28,6 +30,105 @@ router = APIRouter(
     prefix="/api/v1/decisions",
     tags=["decisions"],
 )
+
+
+@router.get(
+    "/dashboard-stats",
+    response_model=DashboardStatsResponse,
+)
+def get_dashboard_stats(
+    db: Session = Depends(get_db),
+):
+    """Aggregate dashboard metrics in a single database query for instantaneous page loading."""
+    from sqlalchemy import func
+    from app.db.models import AuditEvent, Evidence, ReviewAction
+
+    # 1. Fetch recent decisions (limit 50) with their event counts
+    decisions_list = list_decisions(db, skip=0, limit=50)
+
+    # 2. Total evidence count
+    total_evidence = db.query(func.count(Evidence.id)).scalar() or 0
+
+    # 3. Policy evaluation events count
+    policy_eval_count = (
+        db.query(func.count(AuditEvent.id))
+        .filter(AuditEvent.event_type == "POLICY_EVALUATION")
+        .scalar()
+        or 0
+    )
+
+    # 4. Total unique decisions with review history
+    decisions_with_reviews_count = (
+        db.query(func.count(func.distinct(ReviewAction.decision_id))).scalar() or 0
+    )
+
+    total_decisions_count = db.query(func.count(Decision.id)).scalar() or 0
+    decisions_without_reviews_count = max(0, total_decisions_count - decisions_with_reviews_count)
+
+    # 5. Integrity counts from root_hash presence and integrity checks
+    # Decisions with a root hash are completed/valid in the tamper-evident chain
+    intact_count = db.query(func.count(Decision.id)).filter(Decision.root_hash.isnot(None)).scalar() or 0
+    warning_count = db.query(func.count(Decision.id)).filter(Decision.status.in_(["policy_violated", "failed", "compromised"])).scalar() or 0
+    unavailable_count = max(0, total_decisions_count - intact_count - warning_count)
+
+    return DashboardStatsResponse(
+        decisions=decisions_list,
+        evidence_count=total_evidence,
+        policy_evaluation_count=policy_eval_count,
+        decisions_with_review_history=decisions_with_reviews_count,
+        decisions_without_review_history=decisions_without_reviews_count,
+        integrity_available_count=intact_count + warning_count,
+        intact_chain_count=intact_count,
+        warning_chain_count=warning_count,
+        integrity_unavailable_count=unavailable_count,
+    )
+
+
+@router.get(
+    "/audit-reports",
+    response_model=list[AuditReportItemResponse],
+)
+def list_audit_reports(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """List concise audit report items for all decisions in a single query."""
+    from app.db.models import AuditEvent
+
+    decisions = list_decisions(db, skip=skip, limit=limit)
+    decision_ids = [d.id for d in decisions]
+
+    # Batch query latest outcome events for these decisions
+    outcome_events = (
+        db.query(AuditEvent)
+        .filter(
+            AuditEvent.decision_id.in_(decision_ids),
+            AuditEvent.event_type.in_(["OUTPUT", "ACTION_TAKEN", "DECISION_MADE"]),
+        )
+        .order_by(AuditEvent.sequence_number.desc())
+        .all()
+    ) if decision_ids else []
+
+    outcomes_map: dict = {}
+    for ev in outcome_events:
+        if ev.decision_id not in outcomes_map:
+            p = ev.payload or {}
+            outcomes_map[ev.decision_id] = p.get("verdict") or p.get("action") or p.get("status") or p.get("decision")
+
+    return [
+        AuditReportItemResponse(
+            decision_id=d.id,
+            agent_id=d.agent_id,
+            agent_version=d.agent_version,
+            status=d.status,
+            created_at=d.created_at,
+            root_hash=d.root_hash,
+            event_count=d.event_count,
+            final_outcome=str(outcomes_map.get(d.id)) if outcomes_map.get(d.id) else None,
+        )
+        for d in decisions
+    ]
 
 
 @router.post(

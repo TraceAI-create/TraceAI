@@ -108,6 +108,31 @@ def get_replay_detail(
 
 
 @router.get(
+    "/replays/run/{replay_id}",
+    response_model=ReplayResponse,
+)
+def get_replay_by_id_only(
+    replay_id: uuid.UUID,
+    db: Session = Depends(get_db),
+):
+    """Get the full details and diff summary of a replay run by its ID alone."""
+    replay = db.get(ReplayRun, replay_id)
+    if not replay:
+        raise HTTPException(status_code=404, detail="Replay record not found")
+
+    return ReplayResponse(
+        id=replay.id,
+        decision_id=replay.decision_id,
+        status=replay.status,
+        replay_mode=replay.replay_mode,
+        similarity_score=replay.similarity_score,
+        diff_summary=replay.diff_summary,
+        replayed_events=replay.replayed_events,
+        created_at=replay.created_at,
+    )
+
+
+@router.get(
     "/{decision_id}/audit-report",
 )
 def download_audit_report(
