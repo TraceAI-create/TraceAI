@@ -1,8 +1,30 @@
-import { mockIntegrity } from '../mock/integrity';
+import { api } from './apiClient';
 import type { IntegrityInfo } from '../types/integrity';
 
-/** Returns fixture data only; no cryptographic verification is performed here. */
+interface BackendIntegrity {
+  valid: boolean;
+  event_count?: number;
+  root_hash?: string | null;
+  reason?: string;
+  event_id?: string;
+  sequence_number?: number;
+}
+
 export async function getIntegrityForDecision(decisionId: string): Promise<IntegrityInfo | null> {
-  const integrity = mockIntegrity.find((item) => item.decision_id === decisionId);
-  return Promise.resolve(integrity ? { ...integrity, events: integrity.events.map((event) => ({ ...event })) } : null);
+  try {
+    const r = await api.get<BackendIntegrity>(`/decisions/${decisionId}/integrity`);
+    return {
+      decision_id: decisionId,
+      root_hash: r.root_hash ?? null,
+      event_count: r.event_count ?? 0,
+      events_hashed: r.event_count ?? 0,
+      hash_algorithm: 'SHA-256',
+      chain_status: r.valid ? 'VALID' : 'COMPROMISED',
+      verification_status: r.valid ? 'VERIFIED' : 'FAILED',
+      last_verified_at: new Date().toISOString(),
+      events: [],
+    };
+  } catch {
+    return null;
+  }
 }

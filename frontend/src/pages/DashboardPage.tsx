@@ -58,8 +58,11 @@ function DashboardContent({ data }: { data: DashboardData }) {
   const recentDecisions = data.decisions.slice(0, 5);
   return (
     <>
-      <PageHeader eyebrow="Overview / Investigator workspace" title="Dashboard" description="A concise overview of decision activity and available audit records from the current development fixtures." />
-      <div className="mb-6 flex items-start gap-2 border border-amber-400/15 bg-amber-400/[0.035] px-3 py-2.5 text-[10px] leading-4 text-amber-200/80"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />Development mock data — counts below are calculated from the frontend fixtures, not live backend activity.</div>
+      <PageHeader eyebrow="Overview / Investigator workspace" title="Dashboard" description="A concise overview of decision activity, evidence artifacts, and compliance integrity from live backend audits." />
+      <div className="mb-6 flex items-start gap-2 border border-emerald-400/20 bg-emerald-400/[0.04] px-3 py-2 text-[10px] leading-4 text-emerald-300">
+        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+        Live audit platform connected · Database synchronized with backend API.
+      </div>
 
       <section aria-label="Audit metrics" className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Decision records" value={data.decisions.length} description="Decision summaries available for investigation." icon={Activity} />

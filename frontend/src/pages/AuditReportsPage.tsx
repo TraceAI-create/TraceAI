@@ -36,10 +36,10 @@ export default function AuditReportsPage() {
 
   return (
     <>
-      <PageHeader title="Audit Reports" description="Consolidated decision records for investigator review, including lifecycle events, evidence, policy evaluations, human review, and integrity metadata." />
-      <div className="mb-5 flex items-start gap-2 border border-amber-400/15 bg-amber-400/[0.035] px-3 py-2.5 text-[10px] leading-4 text-amber-200/80">
-        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
-        Development mock data — reports are assembled from frontend fixtures and are not retrieved from the backend.
+      <PageHeader title="Audit Reports" description="Consolidated decision records for investigator review, compiled directly from decision event timelines and cryptographic hash chains." />
+      <div className="mb-5 flex items-start gap-2 border border-emerald-400/20 bg-emerald-400/[0.04] px-3 py-2 text-[10px] leading-4 text-emerald-300">
+        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+        Live audit platform connected · Reports loaded directly from backend API.
       </div>
       {loading ? (
         <div role="status" className="flex items-center gap-3 border border-line bg-panel px-5 py-8 text-sm text-slate-400"><LoaderCircle size={16} className="animate-spin text-accent" />Loading available reports…</div>

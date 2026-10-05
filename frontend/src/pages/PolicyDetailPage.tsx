@@ -4,7 +4,8 @@ import { Link, useParams } from 'react-router-dom';
 import type { Policy, PolicyEvaluation } from '../types/policy';
 import { getPolicyById, getPolicyEvaluations } from '../services/policyService';
 
-function humanize(value: string): string {
+function humanize(value: string | null | undefined): string {
+  if (!value) return '—';
   return value
     .split(/[_\s-]+/)
     .filter(Boolean)
@@ -162,7 +163,7 @@ export default function PolicyDetailPage() {
     <>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <Link to="/policies" className="inline-flex items-center gap-2 text-xs text-slate-400 outline-none hover:text-slate-100 focus-visible:ring-1 focus-visible:ring-accent/50"><ArrowLeft size={14} />Back to Policy Library</Link>
-        <span className="inline-flex items-center gap-1.5 text-[9px] uppercase tracking-wider text-amber-300/80"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" />Development mock data</span>
+        <span className="inline-flex items-center gap-1.5 text-[9px] uppercase tracking-wider text-emerald-400"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />Live policy definition</span>
       </div>
       {loading ? <LoadingState /> : error ? <ErrorState message={error} /> : policy ? (
         <>

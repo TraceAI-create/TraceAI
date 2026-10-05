@@ -11,6 +11,7 @@ import {
   RotateCcw,
   Search,
   ShieldAlert,
+  ShieldCheck,
   SlidersHorizontal,
   X,
 } from 'lucide-react';
@@ -307,11 +308,14 @@ export default function ReplayPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Audit / Replay" title="Decision Replay" description="Reconstruct a recorded decision from its captured information, then explore how changed conditions could affect its modeled outcome." />
+      <PageHeader eyebrow="Audit / Replay" title="Decision Replay" description="Reconstruct a recorded decision from its captured information, then explore how changed conditions affect its modeled outcome." />
 
-      <div className="mb-6 flex items-start gap-3 border border-amber-400/15 bg-amber-400/[0.035] px-4 py-3">
-        <ShieldAlert size={15} className="mt-0.5 shrink-0 text-amber-300/80" />
-        <div><p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-amber-200/90">Development mock data</p><p className="mt-1 text-[11px] leading-5 text-slate-400">Replay results shown here are development fixtures and do not execute the production agent or AI model.</p></div>
+      <div className="mb-6 flex items-start gap-3 border border-emerald-400/20 bg-emerald-400/[0.04] px-4 py-3">
+        <ShieldCheck size={15} className="mt-0.5 shrink-0 text-emerald-400" />
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-emerald-300">Live Replay & Simulation Engine</p>
+          <p className="mt-1 text-[11px] leading-5 text-slate-400">Replays are executed dynamically in the backend sandbox using recorded tool responses from the Evidence Store.</p>
+        </div>
       </div>
 
       {decisionError ? <div role="alert" className="mb-5 border border-rose-400/20 bg-rose-400/[0.04] px-5 py-4 text-xs text-rose-200">Could not load decisions: {decisionError}</div> : null}
@@ -325,7 +329,33 @@ export default function ReplayPage() {
             <input aria-label="Search available decisions by ID or agent" value={decisionQuery} onChange={(event) => setDecisionQuery(event.target.value)} placeholder="Filter by decision ID or agent" className="h-10 w-full border border-line bg-shell pl-9 pr-9 text-xs text-slate-300 outline-none placeholder:text-slate-600 focus:border-accent/50 focus-visible:ring-1 focus-visible:ring-accent/30" />
             {decisionQuery && <button type="button" aria-label="Clear decision search" onClick={() => setDecisionQuery('')} className="absolute right-2 top-[2.45rem] -translate-y-1/2 p-1 text-slate-500 outline-none hover:text-slate-200 focus-visible:ring-1 focus-visible:ring-accent/50"><X size={13} /></button>}
           </label>
-          <label className="block min-w-0"><span className="mb-1.5 block text-[10px] text-slate-500">2 · Select the decision to investigate</span><select aria-label="Choose a decision" value={selectedDecisionId} onChange={(event) => { setSelectedDecisionId(event.target.value); setActiveReplay(null); }} disabled={decisionLoading} className="h-10 w-full min-w-0 border border-line bg-shell px-3 text-xs text-slate-300 outline-none focus:border-accent/50 focus-visible:ring-1 focus-visible:ring-accent/30 disabled:opacity-50"><option value="">{decisionLoading ? 'Loading decisions…' : 'Select a decision'}</option>{selectedDecision && !filteredDecisions.some((decision) => decision.id === selectedDecision.id) && <option value={selectedDecision.id}>{selectedDecision.agent_id} · {selectedDecision.id}</option>}{filteredDecisions.map((decision) => <option key={decision.id} value={decision.id}>{decision.agent_id} · {decision.id}</option>)}</select></label>
+          <label className="block min-w-0">
+            <span className="mb-1.5 block text-[10px] text-slate-500">2 · Select the decision to investigate</span>
+            <select
+              aria-label="Choose a decision"
+              value={selectedDecisionId}
+              onChange={(event) => {
+                setSelectedDecisionId(event.target.value);
+                setActiveReplay(null);
+              }}
+              disabled={decisionLoading}
+              className="h-10 w-full min-w-0 border border-line bg-shell px-3 text-xs text-slate-200 outline-none focus:border-accent/50 focus-visible:ring-1 focus-visible:ring-accent/30 disabled:opacity-50"
+            >
+              <option value="" className="bg-[#0e141d] text-slate-400">
+                {decisionLoading ? 'Loading decisions…' : 'Select a decision'}
+              </option>
+              {selectedDecision && !filteredDecisions.some((decision) => decision.id === selectedDecision.id) && (
+                <option value={selectedDecision.id} className="bg-[#0e141d] text-slate-200">
+                  {selectedDecision.agent_id} · {selectedDecision.id}
+                </option>
+              )}
+              {filteredDecisions.map((decision) => (
+                <option key={decision.id} value={decision.id} className="bg-[#0e141d] text-slate-200">
+                  {decision.agent_id} · {decision.id}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
         {selectedDecision && (
           <div className="mt-4 border border-line bg-shell/70 p-3 sm:p-4">

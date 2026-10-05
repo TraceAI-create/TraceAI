@@ -1,27 +1,38 @@
-import { mockReviews } from '../mock/reviews';
+import { api } from './apiClient';
 import type { ReviewAction, ReviewActionKind } from '../types/review';
 
-let generatedReviewNumber = 1;
+interface BackendReview {
+  id: string;
+  decision_id: string;
+  reviewer_id: string;
+  action: string;
+  comments: string | null;
+  created_at: string;
+}
 
-function copyReview(review: ReviewAction): ReviewAction {
-  return { ...review };
+function toReview(r: BackendReview): ReviewAction {
+  return {
+    id: r.id,
+    decision_id: r.decision_id,
+    // Backend uses `reviewer_id`; frontend uses `reviewer`
+    reviewer: r.reviewer_id,
+    action: r.action.toUpperCase() as ReviewActionKind,
+    // Backend uses `comments`; frontend uses `comment`
+    comment: r.comments,
+    created_at: r.created_at,
+  };
 }
 
 export async function getReviewsForDecision(decisionId: string): Promise<ReviewAction[]> {
-  return Promise.resolve(
-    mockReviews
-      .filter((review) => review.decision_id === decisionId)
-      .sort((a, b) => b.created_at.localeCompare(a.created_at))
-      .map(copyReview),
-  );
+  const results = await api.get<BackendReview[]>(`/decisions/${decisionId}/reviews`);
+  return results.map(toReview).sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
-export async function getReviewById(reviewId: string): Promise<ReviewAction | null> {
-  const review = mockReviews.find((item) => item.id === reviewId);
-  return Promise.resolve(review ? copyReview(review) : null);
+export async function getReviewById(_reviewId: string): Promise<ReviewAction | null> {
+  // No dedicated single-review endpoint — not needed by the UI
+  return null;
 }
 
-/** Adds an in-memory development review; it is not persisted to the backend. */
 export async function submitMockReview(input: {
   decision_id: string;
   action: ReviewActionKind;
@@ -32,14 +43,10 @@ export async function submitMockReview(input: {
     throw new Error('A comment is required for a rejected or overridden review.');
   }
 
-  const review: ReviewAction = {
-    id: `review-dev-${Date.now()}-${generatedReviewNumber++}`,
-    decision_id: input.decision_id,
-    reviewer: 'auditor-local',
-    action: input.action,
-    comment: input.comment?.trim() || null,
-    created_at: new Date().toISOString(),
-  };
-  mockReviews.push(review);
-  return copyReview(review);
+  const review = await api.post<BackendReview>(`/decisions/${input.decision_id}/reviews`, {
+    reviewer_id: 'auditor-ui',
+    action: input.action.toLowerCase(),
+    comments: input.comment?.trim() || null,
+  });
+  return toReview(review);
 }

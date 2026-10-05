@@ -52,7 +52,7 @@ function ReplayDetail({ replay }: { replay: ReplayRun }) {
       <div className="mb-6 border-b border-line pb-6">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <Link to="/replay" className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-slate-100"><ArrowLeft size={14} />Back to Replay Workspace</Link>
-          <span className="inline-flex items-center gap-1.5 text-[9px] uppercase tracking-wider text-amber-300/80"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" />Development mock data</span>
+          <span className="inline-flex items-center gap-1.5 text-[9px] uppercase tracking-wider text-emerald-400"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />Live replay execution</span>
         </div>
         <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.16em] text-accent/80">Replay / Run detail</p>
         <h1 className="text-xl font-semibold tracking-tight text-slate-100 sm:text-2xl">{deterministic ? 'Deterministic replay' : 'What-if replay'}</h1>

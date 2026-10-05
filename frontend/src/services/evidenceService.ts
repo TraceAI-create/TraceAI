@@ -1,38 +1,46 @@
-import { mockEvidence } from '../mock/evidence';
-import { mockDecisions } from '../mock/decisions';
-import type { Evidence, LinkedDecision } from '../types/evidence';
+import { api } from './apiClient';
+import type { Evidence } from '../types/evidence';
 
-function withLinkedDecisions(evidence: Evidence): Evidence {
-  const linkedDecisions: LinkedDecision[] = evidence.linked_decision_ids.flatMap((id) => {
-    const decision = mockDecisions.find((item) => item.id === id);
-    return decision
-      ? [{
-          id: decision.id,
-          agent_id: decision.agent_id,
-          status: decision.status,
-          created_at: decision.created_at,
-        }]
-      : [];
-  });
+interface BackendEvidence {
+  id: string;
+  type: string;
+  content_hash: string;
+  storage_uri: string;
+  metadata_json: Record<string, unknown>;
+  created_at: string;
+}
 
+function toEvidence(e: BackendEvidence): Evidence {
   return {
-    ...evidence,
-    metadata: { ...evidence.metadata },
-    linked_decision_ids: [...evidence.linked_decision_ids],
-    linked_decisions: linkedDecisions,
+    id: e.id,
+    // Map backend `type` → frontend `evidence_type`
+    evidence_type: e.type,
+    title: e.metadata_json?.['title'] as string ?? e.type.replace(/_/g, ' '),
+    source: e.metadata_json?.['source'] as string ?? 'TraceAI Evidence Store',
+    source_reference: e.storage_uri,
+    // Content is not returned in list — use content hash as placeholder
+    content: e.content_hash,
+    excerpt: null,
+    created_at: e.created_at,
+    retrieved_at: null,
+    // Map backend `content_hash` → frontend `hash`
+    hash: e.content_hash,
+    metadata: e.metadata_json ?? {},
+    linked_decision_ids: [],
+    linked_decisions: [],
   };
 }
 
-/**
- * Evidence data boundary for the explorer and detail view.
- * Replace these mock implementations with GET /api/v1/evidence and
- * GET /api/v1/evidence/{evidence_id} when backend integration is ready.
- */
 export async function getEvidence(): Promise<Evidence[]> {
-  return Promise.resolve(mockEvidence.map(withLinkedDecisions));
+  const results = await api.get<BackendEvidence[]>('/evidence?limit=100');
+  return results.map(toEvidence);
 }
 
 export async function getEvidenceById(evidenceId: string): Promise<Evidence | null> {
-  const evidence = mockEvidence.find((item) => item.id === evidenceId);
-  return Promise.resolve(evidence ? withLinkedDecisions(evidence) : null);
+  try {
+    const e = await api.get<BackendEvidence>(`/evidence/${evidenceId}`);
+    return toEvidence(e);
+  } catch {
+    return null;
+  }
 }

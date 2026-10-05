@@ -30,7 +30,8 @@ const evidenceTypeIcons: Record<string, LucideIcon> = {
   DATABASE_RECORD: Database,
 };
 
-function humanize(value: string): string {
+function humanize(value: string | null | undefined): string {
+  if (!value) return '—';
   return value
     .split(/[_\s-]+/)
     .filter(Boolean)
@@ -168,8 +169,8 @@ export default function EvidencePage() {
 
       <div className="mb-3 flex flex-col gap-2 text-[11px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
         <span>{loading ? 'Loading records…' : `${filteredEvidence.length} ${filteredEvidence.length === 1 ? 'record' : 'records'}`}</span>
-        <span className="inline-flex items-center gap-1.5 text-amber-300/80">
-          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> Development mock data · not from the backend
+        <span className="inline-flex items-center gap-1.5 text-emerald-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Live evidence store
         </span>
       </div>
 

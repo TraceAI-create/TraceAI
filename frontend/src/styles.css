@@ -1,8 +1,5 @@
+@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
 :root {
   color-scheme: dark;
@@ -22,6 +19,8 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
+  background-color: #090d13;
+  color: #f1f5f9;
 }
 
 button,
@@ -31,4 +30,20 @@ a {
 
 ::selection {
   background: rgb(110 168 254 / 25%);
+}
+
+select {
+  color-scheme: dark;
+  background-color: #090d13;
+  color: #f1f5f9;
+}
+
+select option {
+  background-color: #0e141d !important;
+  color: #f1f5f9 !important;
+}
+
+select option:checked {
+  background-color: #1e293b !important;
+  color: #6ea8fe !important;
 }

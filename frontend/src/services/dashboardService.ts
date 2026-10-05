@@ -1,8 +1,4 @@
-import { getDecisions } from './decisionService';
-import { getEvidence } from './evidenceService';
-import { getEvaluationsForDecision } from './policyService';
-import { getReviewsForDecision } from './reviewService';
-import { getIntegrityForDecision } from './integrityService';
+import { api } from './apiClient';
 import type { Decision } from '../types/decision';
 
 export interface DashboardData {
@@ -17,28 +13,51 @@ export interface DashboardData {
   integrityUnavailableCount: number;
 }
 
-/** Aggregates existing mock-backed services; no dashboard-specific fixtures are introduced. */
-export async function getDashboardData(): Promise<DashboardData> {
-  const [decisions, evidence] = await Promise.all([getDecisions(), getEvidence()]);
-  const perDecision = await Promise.all(decisions.map(async (decision) => {
-    const [evaluations, reviews, integrity] = await Promise.all([
-      getEvaluationsForDecision(decision.id),
-      getReviewsForDecision(decision.id),
-      getIntegrityForDecision(decision.id),
-    ]);
-    return { evaluations, hasReviews: reviews.length > 0, integrity };
-  }));
+interface BackendDashboardStats {
+  decisions: Array<{
+    id: string;
+    agent_id: string;
+    agent_version: string;
+    status: string;
+    created_at: string;
+    root_hash: string | null;
+    event_count: number;
+  }>;
+  evidence_count: number;
+  policy_evaluation_count: number;
+  decisions_with_review_history: number;
+  decisions_without_review_history: number;
+  integrity_available_count: number;
+  intact_chain_count: number;
+  warning_chain_count: number;
+  integrity_unavailable_count: number;
+}
 
-  const integrityRecords = perDecision.flatMap((item) => item.integrity ? [item.integrity] : []);
+/**
+ * Instantaneous dashboard load.
+ * Fetches pre-aggregated statistics from GET /api/v1/decisions/dashboard-stats
+ * in a single HTTP request instead of N+1 cascading requests.
+ */
+export async function getDashboardData(): Promise<DashboardData> {
+  const stats = await api.get<BackendDashboardStats>('/decisions/dashboard-stats');
+
   return {
-    decisions: decisions.slice().sort((left, right) => right.created_at.localeCompare(left.created_at)),
-    evidenceCount: evidence.length,
-    policyEvaluationCount: perDecision.reduce((sum, item) => sum + item.evaluations.length, 0),
-    decisionsWithReviewHistory: perDecision.filter((item) => item.hasReviews).length,
-    decisionsWithoutReviewHistory: perDecision.filter((item) => !item.hasReviews).length,
-    integrityAvailableCount: integrityRecords.length,
-    intactChainCount: integrityRecords.filter((item) => item.chain_status === 'CHAIN_INTACT').length,
-    warningChainCount: integrityRecords.filter((item) => item.chain_status === 'CHAIN_WARNING').length,
-    integrityUnavailableCount: decisions.length - integrityRecords.length,
+    decisions: stats.decisions.map((d) => ({
+      id: d.id,
+      agent_id: d.agent_id,
+      agent_version: d.agent_version,
+      status: d.status,
+      created_at: d.created_at,
+      root_hash: d.root_hash,
+      event_count: d.event_count ?? 0,
+    })),
+    evidenceCount: stats.evidence_count,
+    policyEvaluationCount: stats.policy_evaluation_count,
+    decisionsWithReviewHistory: stats.decisions_with_review_history,
+    decisionsWithoutReviewHistory: stats.decisions_without_review_history,
+    integrityAvailableCount: stats.integrity_available_count,
+    intactChainCount: stats.intact_chain_count,
+    warningChainCount: stats.warning_chain_count,
+    integrityUnavailableCount: stats.integrity_unavailable_count,
   };
 }

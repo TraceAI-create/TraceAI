@@ -25,7 +25,8 @@ function statusGroup(status: string): Exclude<StatusFilter, 'all'> {
   return 'other';
 }
 
-function statusLabel(status: string): string {
+function statusLabel(status: string | null | undefined): string {
+  if (!status) return '—';
   return status
     .split(/[_\s-]+/)
     .filter(Boolean)
@@ -193,9 +194,9 @@ export default function DecisionsPage() {
 
       <div className="mb-3 flex flex-col gap-2 text-[11px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
         <span role="status" className="font-medium text-slate-400">{loading ? 'Loading records…' : `${filteredDecisions.length} ${filteredDecisions.length === 1 ? 'record' : 'records'}`}</span>
-        <span className="inline-flex items-center gap-1.5 text-amber-300/80">
-          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-          Development mock data · not from the backend
+        <span className="inline-flex items-center gap-1.5 text-emerald-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          Live database records
         </span>
       </div>
 

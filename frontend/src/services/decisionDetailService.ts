@@ -1,10 +1,91 @@
-import { mockDecisionDetails } from '../mock/decisionDetails';
-import type { DecisionDetail } from '../types/decisionDetail';
+import { api } from './apiClient';
+import type { DecisionDetail, AuditEvent, DecisionEvidenceReference, DecisionPolicyReference } from '../types/decisionDetail';
 
-/**
- * Decision detail data boundary for the audit view.
- * Replace this mock implementation with GET /api/v1/decisions/{decision_id} later.
- */
+interface BackendEvent {
+  id: string;
+  event_type: string;
+  sequence_number: number;
+  timestamp: string;
+  payload: Record<string, unknown>;
+  previous_hash: string | null;
+  event_hash: string;
+}
+
+interface BackendEvidenceLink {
+  id: string;
+  evidence_id: string;
+  role: string;
+  created_at: string;
+}
+
+interface BackendReview {
+  id: string;
+  reviewer_id: string;
+  action: string;
+  comments: string | null;
+  created_at: string;
+}
+
+interface BackendDecisionDetail {
+  id: string;
+  agent_id: string;
+  agent_version: string;
+  status: string;
+  created_at: string;
+  root_hash: string | null;
+  input_data: Record<string, unknown>;
+  events: BackendEvent[];
+  evidence_links: BackendEvidenceLink[];
+  review_actions: BackendReview[];
+}
+
+function toAuditEvent(e: BackendEvent): AuditEvent {
+  return {
+    id: e.id,
+    event_type: e.event_type,
+    sequence: e.sequence_number,
+    timestamp: e.timestamp,
+    actor: e.payload?.['agent_id'] as string ?? 'system',
+    payload: e.payload as Record<string, import('../types/decisionDetail').JsonValue>,
+    hash: e.event_hash,
+    previous_hash: e.previous_hash,
+  };
+}
+
 export async function getDecisionDetail(decisionId: string): Promise<DecisionDetail | null> {
-  return Promise.resolve(mockDecisionDetails[decisionId] ?? null);
+  try {
+    const d = await api.get<BackendDecisionDetail>(`/decisions/${decisionId}`);
+
+    const events: AuditEvent[] = (d.events ?? []).map(toAuditEvent);
+    const evidence: DecisionEvidenceReference[] = (d.evidence_links ?? []).map((l) => ({
+      id: l.evidence_id,
+      type: 'evidence',
+      role: l.role,
+    }));
+    const latestReview = d.review_actions?.[d.review_actions.length - 1] ?? null;
+
+    return {
+      id: d.id,
+      agent_id: d.agent_id,
+      agent_version: d.agent_version,
+      status: d.status,
+      created_at: d.created_at,
+      root_hash: d.root_hash,
+      event_count: events.length,
+      decision_summary: `Agent ${d.agent_id} (v${d.agent_version}) — status: ${d.status}`,
+      events,
+      evidence,
+      policies: [] as DecisionPolicyReference[],
+      human_review: latestReview
+        ? {
+            reviewer_id: latestReview.reviewer_id,
+            action: latestReview.action,
+            comments: latestReview.comments,
+            created_at: latestReview.created_at,
+          }
+        : null,
+    };
+  } catch {
+    return null;
+  }
 }
